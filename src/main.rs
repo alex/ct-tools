@@ -20,48 +20,13 @@ extern crate ct_submitter;
 
 use std::{env, process};
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::time::Duration;
-
-use byteorder::{BigEndian, WriteBytesExt};
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use ct_submitter::{fetch_trusted_ct_logs, Log};
+use ct_submitter::{fetch_trusted_ct_logs, Log, SignedCertificateTimestamp};
 
-
-
-#[derive(Debug, Deserialize)]
-struct SignedCertificateTimestamp {
-    sct_version: u8,
-    id: String,
-    timestamp: u64,
-    extensions: String,
-    signature: String,
-}
-
-impl SignedCertificateTimestamp {
-    fn to_raw_bytes(&self) -> Vec<u8> {
-        let mut b = Vec::new();
-        b.write_u8(self.sct_version).unwrap();
-
-        let log_id = base64::decode(&self.id).unwrap();
-        b.write(&log_id).unwrap();
-
-        b.write_u64::<BigEndian>(self.timestamp).unwrap();
-
-        let extensions = base64::decode(&self.extensions).unwrap();
-        assert!(extensions.len() <= 65535);
-        b.write_u16::<BigEndian>(extensions.len() as u16)
-            .unwrap();
-        b.write(&extensions).unwrap();
-
-        let signature = base64::decode(&self.signature).unwrap();
-        b.write(&signature).unwrap();
-
-        return b;
-    }
-}
 
 fn submit_to_log(http_client: &hyper::Client,
                  url: &str,
