@@ -59,27 +59,24 @@ fn fetch_trusted_ct_logs(http_client: &hyper::Client) -> Vec<Log> {
     let response = http_client.get(LOG_LIST_URL).send().unwrap();
     let logs_response: LogsResponse = serde_json::from_reader(response).unwrap();
 
-    let mut google_id = None;
-    for operator in logs_response.operators {
-        if operator.name == "Google" {
-            google_id = Some(operator.id);
-            break;
-        }
-    }
+    let google_id = logs_response
+        .operators
+        .iter()
+        .find(|o| o.name == "Google")
+        .map(|o| o.id);
 
-    let mut logs = vec![];
-    for log in logs_response.logs {
-        if log.disqualified_at.is_some() {
-            continue;
-        }
-        logs.push(Log {
-                      url: log.url,
-                      description: log.description,
-                      is_google: log.operated_by.contains(&google_id.unwrap()),
-                  });
-    }
-
-    return logs;
+    return logs_response
+               .logs
+               .into_iter()
+               .filter(|log| log.disqualified_at.is_none())
+               .map(|log| {
+                        Log {
+                            url: log.url,
+                            description: log.description,
+                            is_google: log.operated_by.contains(&google_id.unwrap()),
+                        }
+                    })
+               .collect();
 }
 
 #[derive(Debug, Deserialize)]
