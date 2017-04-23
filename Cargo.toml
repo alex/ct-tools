@@ -20,3 +20,5 @@ serde_json = "*"
 pem = "*"
 
 prettytable-rs = "*"
+
+url = "*"

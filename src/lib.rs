@@ -16,7 +16,7 @@ use std::io::{Read, Write};
 #[derive(Debug, Clone)]
 pub struct Log {
     pub description: String,
-    pub url: String,
+    url: String,
     is_google: bool,
 }
 
@@ -132,9 +132,9 @@ fn submit_to_log(http_client: &hyper::Client,
     return Some(serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap());
 }
 
-#[derive(Serialize)]
-struct AddChainRequest {
-    chain: Vec<String>,
+#[derive(Serialize, Deserialize)]
+pub struct AddChainRequest {
+    pub chain: Vec<String>,
 }
 
 pub fn submit_cert_to_logs<'a>(http_client: &hyper::Client,
