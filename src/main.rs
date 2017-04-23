@@ -137,9 +137,7 @@ fn submit_to_log(http_client: &hyper::Client,
         return None;
     }
 
-    let parsed_response: SignedCertificateTimestamp = serde_json::from_reader(response).unwrap();
-
-    return Some(parsed_response);
+    return Some(serde_json::from_reader(response).unwrap());
 }
 
 #[derive(Serialize)]
