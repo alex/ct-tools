@@ -148,17 +148,16 @@ struct AddChainRequest {
     chain: Vec<String>,
 }
 
-fn submit_cert_to_logs(http_client: &hyper::Client,
-                       logs: &[Log],
-                       cert: Vec<Vec<u8>>)
-                       -> Vec<(Log, SignedCertificateTimestamp)> {
+fn submit_cert_to_logs<'a>(http_client: &hyper::Client,
+                           logs: &'a [Log],
+                           cert: Vec<Vec<u8>>)
+                           -> Vec<(&'a Log, SignedCertificateTimestamp)> {
     let payload = serde_json::to_vec(&AddChainRequest {
             chain: cert.iter().map(|r| base64::encode(r)).collect(),
         })
         .unwrap();
 
-    // TODO: At least some of this cloning and filtering has got to be nonsense...
-    let scts: Vec<(&Log, SignedCertificateTimestamp)> = logs.par_iter()
+    return logs.par_iter()
         .map(|ref log| {
             let sct = submit_to_log(http_client, &log.url, &payload);
             return (log.clone(), sct);
@@ -166,7 +165,6 @@ fn submit_cert_to_logs(http_client: &hyper::Client,
         .filter(|&(_, ref sct)| sct.is_some())
         .map(|(log, sct)| (log, sct.unwrap()))
         .collect();
-    return scts.into_iter().map(|(log, sct)| (log.clone(), sct)).collect();
 }
 
 fn main() {
