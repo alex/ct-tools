@@ -19,6 +19,7 @@ extern crate prettytable;
 use std::{env, process};
 use std::fs::File;
 use std::io::{Read, Write};
+use std::time::Duration;
 
 use byteorder::{BigEndian, WriteBytesExt};
 
@@ -187,9 +188,10 @@ fn main() {
         .map(|p| p.contents)
         .collect();
 
-    let http_client = hyper::Client::with_connector(
+    let mut http_client = hyper::Client::with_connector(
         hyper::net::HttpsConnector::new(hyper_native_tls::NativeTlsClient::new().unwrap())
     );
+    http_client.set_read_timeout(Some(Duration::from_secs(5)));
     let logs = fetch_trusted_ct_logs(&http_client);
 
     let scts = submit_cert_to_logs(&http_client, &logs, chain);
