@@ -73,10 +73,10 @@ fn fetch_trusted_ct_logs(http_client: &hyper::Client) -> Vec<Log> {
             continue;
         }
         logs.push(Log {
-            url: log.url,
-            description: log.description,
-            is_google: log.operated_by.contains(&google_id.unwrap()),
-        });
+                      url: log.url,
+                      description: log.description,
+                      is_google: log.operated_by.contains(&google_id.unwrap()),
+                  });
     }
 
     return logs;
@@ -103,7 +103,8 @@ impl SignedCertificateTimestamp {
 
         let extensions = base64::decode(&self.extensions).unwrap();
         assert!(extensions.len() <= 65535);
-        b.write_u16::<BigEndian>(extensions.len() as u16).unwrap();
+        b.write_u16::<BigEndian>(extensions.len() as u16)
+            .unwrap();
         b.write(&extensions).unwrap();
 
         let signature = base64::decode(&self.signature).unwrap();
@@ -122,7 +123,8 @@ fn submit_to_log(http_client: &hyper::Client,
         url += "/";
     }
     url += "ct/v1/add-chain";
-    let response = http_client.post(&url)
+    let response = http_client
+        .post(&url)
         .body(hyper::client::Body::BufBody(payload, payload.len()))
         .header(hyper::header::ContentType::json())
         .send();
@@ -153,18 +155,18 @@ fn submit_cert_to_logs<'a>(http_client: &hyper::Client,
                            cert: Vec<Vec<u8>>)
                            -> Vec<(&'a Log, SignedCertificateTimestamp)> {
     let payload = serde_json::to_vec(&AddChainRequest {
-            chain: cert.iter().map(|r| base64::encode(r)).collect(),
-        })
-        .unwrap();
+                                          chain: cert.iter().map(|r| base64::encode(r)).collect(),
+                                      })
+            .unwrap();
 
     return logs.par_iter()
-        .map(|ref log| {
-            let sct = submit_to_log(http_client, &log.url, &payload);
-            return (log.clone(), sct);
-        })
-        .filter(|&(_, ref sct)| sct.is_some())
-        .map(|(log, sct)| (log, sct.unwrap()))
-        .collect();
+               .map(|ref log| {
+                        let sct = submit_to_log(http_client, &log.url, &payload);
+                        return (log.clone(), sct);
+                    })
+               .filter(|&(_, ref sct)| sct.is_some())
+               .map(|(log, sct)| (log, sct.unwrap()))
+               .collect();
 }
 
 fn main() {
@@ -177,7 +179,10 @@ fn main() {
     };
 
     let mut contents = String::new();
-    File::open(path).unwrap().read_to_string(&mut contents).unwrap();
+    File::open(path)
+        .unwrap()
+        .read_to_string(&mut contents)
+        .unwrap();
 
     let chain = pem::parse_many(contents)
         .into_iter()
