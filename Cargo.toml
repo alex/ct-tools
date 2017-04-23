@@ -11,6 +11,8 @@ byteorder = "*"
 hyper = "*"
 hyper-native-tls = "*"
 
+rayon = "*"
+
 serde = "*"
 serde_derive = "*"
 serde_json = "*"

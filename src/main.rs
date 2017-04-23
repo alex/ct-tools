@@ -5,6 +5,8 @@ extern crate byteorder;
 extern crate hyper;
 extern crate hyper_native_tls;
 
+extern crate rayon;
+
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
@@ -19,6 +21,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 
 use byteorder::{BigEndian, WriteBytesExt};
+
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 
 #[derive(Deserialize)]
@@ -41,7 +45,7 @@ struct LogsResponse {
     operators: Vec<LogsResponseOperators>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Log {
     description: String,
     url: String,
@@ -144,24 +148,25 @@ struct AddChainRequest {
     chain: Vec<String>,
 }
 
-fn submit_cert_to_logs<'a>(http_client: &hyper::Client,
-                           logs: &'a [Log],
-                           cert: Vec<Vec<u8>>)
-                           -> Vec<(&'a Log, SignedCertificateTimestamp)> {
+fn submit_cert_to_logs(http_client: &hyper::Client,
+                       logs: &[Log],
+                       cert: Vec<Vec<u8>>)
+                       -> Vec<(Log, SignedCertificateTimestamp)> {
     let payload = serde_json::to_vec(&AddChainRequest {
             chain: cert.iter().map(|r| base64::encode(r)).collect(),
         })
         .unwrap();
 
-    let mut scts = Vec::new();
-    // TODO: parallel!
-    for log in logs {
-        match submit_to_log(http_client, &log.url, &payload) {
-            Some(sct) => scts.push((log.clone(), sct)),
-            None => (),
-        }
-    }
-    return scts;
+    // TODO: At least some of this cloning and filtering has got to be nonsense...
+    let scts: Vec<(&Log, SignedCertificateTimestamp)> = logs.par_iter()
+        .map(|ref log| {
+            let sct = submit_to_log(http_client, &log.url, &payload);
+            return (log.clone(), sct);
+        })
+        .filter(|&(_, ref sct)| sct.is_some())
+        .map(|(log, sct)| (log, sct.unwrap()))
+        .collect();
+    return scts.into_iter().map(|(log, sct)| (log.clone(), sct)).collect();
 }
 
 fn main() {
