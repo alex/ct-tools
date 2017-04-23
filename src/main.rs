@@ -57,7 +57,9 @@ const LOG_LIST_URL: &'static str = "https://www.gstatic.com/ct/log_list/log_list
 
 fn fetch_trusted_ct_logs(http_client: &hyper::Client) -> Vec<Log> {
     let response = http_client.get(LOG_LIST_URL).send().unwrap();
-    let logs_response: LogsResponse = serde_json::from_reader(response).unwrap();
+    // Limit the response to 10MB at most, to be resillient to DoS.
+    let logs_response: LogsResponse = serde_json::from_reader(response.take(10 * 1024 * 1024))
+        .unwrap();
 
     let google_id = logs_response
         .operators
@@ -137,7 +139,9 @@ fn submit_to_log(http_client: &hyper::Client,
         return None;
     }
 
-    return Some(serde_json::from_reader(response).unwrap());
+    // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS in
+    // the face of a dumb or malicious log.
+    return Some(serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap());
 }
 
 #[derive(Serialize)]
