@@ -26,13 +26,13 @@ struct LogsResponseLogs {
     description: String,
     url: String,
     operated_by: Vec<u32>,
-    disqualified_at: Option<u64>
+    disqualified_at: Option<u64>,
 }
 
 #[derive(Deserialize)]
 struct LogsResponseOperators {
     name: String,
-    id: u32
+    id: u32,
 }
 
 #[derive(Deserialize)]
@@ -49,26 +49,26 @@ struct Log {
 }
 
 
-const LOG_LIST_URL : &'static str  = "https://www.gstatic.com/ct/log_list/log_list.json";
+const LOG_LIST_URL: &'static str = "https://www.gstatic.com/ct/log_list/log_list.json";
 
 fn fetch_trusted_ct_logs(http_client: &hyper::Client) -> Vec<Log> {
     let response = http_client.get(LOG_LIST_URL).send().unwrap();
-    let logs_response : LogsResponse = serde_json::from_reader(response).unwrap();
+    let logs_response: LogsResponse = serde_json::from_reader(response).unwrap();
 
     let mut google_id = None;
     for operator in logs_response.operators {
         if operator.name == "Google" {
             google_id = Some(operator.id);
-            break
+            break;
         }
     }
 
     let mut logs = vec![];
     for log in logs_response.logs {
         if log.disqualified_at.is_some() {
-            continue
+            continue;
         }
-        logs.push(Log{
+        logs.push(Log {
             url: log.url,
             description: log.description,
             is_google: log.operated_by.contains(&google_id.unwrap()),
@@ -109,17 +109,19 @@ impl SignedCertificateTimestamp {
     }
 }
 
-fn submit_to_log(http_client: &hyper::Client, url: &str, payload: &[u8]) -> Option<SignedCertificateTimestamp> {
+fn submit_to_log(http_client: &hyper::Client,
+                 url: &str,
+                 payload: &[u8])
+                 -> Option<SignedCertificateTimestamp> {
     let mut url = "https://".to_string() + url;
     if !url.ends_with("/") {
         url += "/";
     }
     url += "ct/v1/add-chain";
-    let response = http_client.post(&url).body(
-        hyper::client::Body::BufBody(payload, payload.len())
-    ).header(
-        hyper::header::ContentType::json()
-    ).send();
+    let response = http_client.post(&url)
+        .body(hyper::client::Body::BufBody(payload, payload.len()))
+        .header(hyper::header::ContentType::json())
+        .send();
     let response = match response {
         Ok(r) => r,
         // TODO: maybe not all of these should be silently ignored.
@@ -132,7 +134,7 @@ fn submit_to_log(http_client: &hyper::Client, url: &str, payload: &[u8]) -> Opti
         return None;
     }
 
-    let parsed_response : SignedCertificateTimestamp = serde_json::from_reader(response).unwrap();
+    let parsed_response: SignedCertificateTimestamp = serde_json::from_reader(response).unwrap();
 
     return Some(parsed_response);
 }
@@ -142,10 +144,14 @@ struct AddChainRequest {
     chain: Vec<String>,
 }
 
-fn submit_cert_to_logs<'a>(http_client: &hyper::Client, logs: &'a [Log], cert: Vec<Vec<u8>>) -> Vec<(&'a Log, SignedCertificateTimestamp)> {
-    let payload = serde_json::to_vec(&AddChainRequest{
-        chain: cert.iter().map(|r| base64::encode(r)).collect(),
-    }).unwrap();
+fn submit_cert_to_logs<'a>(http_client: &hyper::Client,
+                           logs: &'a [Log],
+                           cert: Vec<Vec<u8>>)
+                           -> Vec<(&'a Log, SignedCertificateTimestamp)> {
+    let payload = serde_json::to_vec(&AddChainRequest {
+            chain: cert.iter().map(|r| base64::encode(r)).collect(),
+        })
+        .unwrap();
 
     let mut scts = Vec::new();
     // TODO: parallel!
@@ -170,7 +176,11 @@ fn main() {
     let mut contents = String::new();
     File::open(path).unwrap().read_to_string(&mut contents).unwrap();
 
-    let chain = pem::parse_many(contents).into_iter().filter(|p| p.tag == "CERTIFICATE").map(|p| p.contents).collect();
+    let chain = pem::parse_many(contents)
+        .into_iter()
+        .filter(|p| p.tag == "CERTIFICATE")
+        .map(|p| p.contents)
+        .collect();
 
     let http_client = hyper::Client::with_connector(
         hyper::net::HttpsConnector::new(hyper_native_tls::NativeTlsClient::new().unwrap())
