@@ -56,7 +56,7 @@ fn main() {
             .append_pair("b64cert", &base64::encode(&chain[0]))
             .finish();
         let body_bytes = body.as_bytes();
-        let mut response = http_client
+        let response = http_client
             .post("https://crt.sh/gen-add-chain")
             .header(hyper::header::ContentType::form_url_encoded())
             .body(hyper::client::Body::BufBody(body_bytes, body_bytes.len()))
