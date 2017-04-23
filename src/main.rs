@@ -1,15 +1,7 @@
 extern crate base64;
 
-extern crate byteorder;
-
 extern crate hyper;
 extern crate hyper_native_tls;
-
-extern crate rayon;
-
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
 
 extern crate pem;
 
@@ -23,63 +15,8 @@ use std::fs::File;
 use std::io::Read;
 use std::time::Duration;
 
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use ct_submitter::{fetch_trusted_ct_logs, submit_cert_to_logs};
 
-use ct_submitter::{fetch_trusted_ct_logs, Log, SignedCertificateTimestamp};
-
-
-fn submit_to_log(http_client: &hyper::Client,
-                 url: &str,
-                 payload: &[u8])
-                 -> Option<SignedCertificateTimestamp> {
-    let mut url = "https://".to_string() + url;
-    if !url.ends_with("/") {
-        url += "/";
-    }
-    url += "ct/v1/add-chain";
-    let response = http_client
-        .post(&url)
-        .body(hyper::client::Body::BufBody(payload, payload.len()))
-        .header(hyper::header::ContentType::json())
-        .send();
-    let response = match response {
-        Ok(r) => r,
-        // TODO: maybe not all of these should be silently ignored.
-        Err(_) => return None,
-    };
-
-    // 400, 403, and probably some others generally indicate a log doesn't accept certs from this
-    // root, or that the log isn't accepting new submissions.
-    if response.status.is_client_error() {
-        return None;
-    }
-
-    // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS in
-    // the face of a dumb or malicious log.
-    return Some(serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap());
-}
-
-#[derive(Serialize)]
-struct AddChainRequest {
-    chain: Vec<String>,
-}
-
-fn submit_cert_to_logs<'a>(http_client: &hyper::Client,
-                           logs: &'a [Log],
-                           cert: Vec<Vec<u8>>)
-                           -> Vec<(&'a Log, SignedCertificateTimestamp)> {
-    let payload = serde_json::to_vec(&AddChainRequest {
-                                          chain: cert.iter().map(|r| base64::encode(r)).collect(),
-                                      })
-            .unwrap();
-
-    return logs.par_iter()
-               .filter_map(|ref log| {
-                               let sct = submit_to_log(http_client, &log.url, &payload);
-                               return sct.map(|s| (log.clone(), s));
-                           })
-               .collect();
-}
 
 fn main() {
     let path = match env::args().skip(1).next() {
