@@ -1,0 +1,20 @@
+[package]
+name = "ct-submitter"
+version = "0.1.0"
+authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
+
+[dependencies]
+base64 = "*"
+
+byteorder = "*"
+
+hyper = "*"
+hyper-native-tls = "*"
+
+serde = "*"
+serde_derive = "*"
+serde_json = "*"
+
+pem = "*"
+
+prettytable-rs = "*"
