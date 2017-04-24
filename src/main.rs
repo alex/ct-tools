@@ -32,7 +32,7 @@ fn main() {
     let path = match env::args().skip(1).next() {
         Some(p) => p,
         None => {
-            println!("Usage: {} <path/to/chain.pem>", env::args().next().unwrap());
+            println!("Usage: {} <path/to/cert-or-chain.pem>", env::args().next().unwrap());
             process::exit(1);
         }
     };

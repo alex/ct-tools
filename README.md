@@ -5,10 +5,12 @@ Some Rust code for submitting a cert to all of Chrome's trusted CT logs and gett
 Usage:
 
 ```
-$ cargo run path/to/chain.pem
+$ cargo run path/to/cert-or-chain.pem
 ```
 
-Where `chain.pem` is a file with the complete cert chain.
+If the argument is a chain (more than one certificate) `ct-submitter` will
+submit that precise chain. If it is a single certificate, `ct-submitter` will
+automatically build a chain using [`crt.sh`](https://crt.sh/).
 
 Example:
 
@@ -27,4 +29,5 @@ Example:
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | WoSign log             | AEGy3C6J5jzkrxunuym/aMbe5vnxzAR+MN/647O6JZJjAAABW4lzUiEAAAQDAEYwRAIgat0S/80gyWkMPbWrmmPShx76SYjlCelNyMnZB08oqRUCIDyXxyBGGgdHAGdgwVnnK8ug16XhZGSukzDf5eRE9m2y     |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+Find the cert on crt.sh: https://crt.sh?q=96F82FADFE9B285A17FDD7E5B00BB31C7659EF44FB6B00B4C2C7EB08C78FE783
 ```
