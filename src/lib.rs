@@ -13,7 +13,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::io::{Read, Write};
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Log {
     pub description: String,
     url: String,
