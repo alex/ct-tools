@@ -139,7 +139,7 @@ pub struct AddChainRequest {
 
 pub fn submit_cert_to_logs<'a>(http_client: &hyper::Client,
                                logs: &'a [Log],
-                               cert: Vec<Vec<u8>>)
+                               cert: &[Vec<u8>])
                                -> Vec<(&'a Log, SignedCertificateTimestamp)> {
     let payload = serde_json::to_vec(&AddChainRequest {
                                           chain: cert.iter().map(|r| base64::encode(r)).collect(),

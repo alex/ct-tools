@@ -4,6 +4,7 @@ extern crate hyper_native_tls;
 extern crate pem;
 #[macro_use]
 extern crate prettytable;
+extern crate ring;
 extern crate serde_json;
 extern crate url;
 
@@ -13,6 +14,8 @@ use std::{env, process};
 use std::fs::File;
 use std::io::Read;
 use std::time::Duration;
+
+use ring::digest;
 
 use ct_submitter::{fetch_trusted_ct_logs, submit_cert_to_logs, AddChainRequest};
 
@@ -71,7 +74,7 @@ fn main() {
             .collect();
     }
 
-    let scts = submit_cert_to_logs(&http_client, &logs, chain);
+    let scts = submit_cert_to_logs(&http_client, &logs, &chain);
 
     let mut table = prettytable::Table::new();
     table.add_row(row!["Log", "SCT"]);
@@ -79,4 +82,11 @@ fn main() {
         table.add_row(row![log.description, base64::encode(&sct.to_raw_bytes())]);
     }
     table.printstd();
+
+    println!("Find the cert on crt.sh: https://crt.sh?q={}",
+             digest::digest(&digest::SHA256, &chain[0])
+                 .as_ref()
+                 .iter()
+                 .map(|b| format!("{:02X}", b))
+                 .collect::<String>());
 }

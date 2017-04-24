@@ -13,6 +13,8 @@ hyper-native-tls = "*"
 
 rayon = "*"
 
+ring = "*"
+
 serde = "*"
 serde_derive = "*"
 serde_json = "*"
