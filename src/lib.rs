@@ -147,9 +147,9 @@ pub fn submit_cert_to_logs<'a>(http_client: &hyper::Client,
             .unwrap();
 
     return logs.par_iter()
-               .filter_map(|ref log| {
+               .filter_map(|log| {
                                let sct = submit_to_log(http_client, &log.url, &payload);
-                               return sct.map(|s| (*log, s));
+                               return sct.map(|s| (log, s));
                            })
                .collect();
 }
