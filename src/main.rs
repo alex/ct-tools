@@ -83,6 +83,7 @@ fn main() {
     }
     table.printstd();
 
+    // TODO: is there a better way to do this hex-encoding?
     println!("Find the cert on crt.sh: https://crt.sh?q={}",
              digest::digest(&digest::SHA256, &chain[0])
                  .as_ref()
