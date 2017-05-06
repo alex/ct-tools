@@ -27,7 +27,7 @@ fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {
                .collect();
 }
 
-fn build_chain(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec<u8>> {
+fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec<u8>> {
     let body = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("b64cert", &base64::encode(cert))
         .finish();
@@ -45,6 +45,15 @@ fn build_chain(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec<u8>> {
                .iter()
                .map(|c| base64::decode(c).unwrap())
                .collect();
+}
+
+fn crtsh_url_for_cert(cert: &[u8]) -> String {
+    return format!("https://crt.sh?q={}",
+             digest::digest(&digest::SHA256, &cert)
+                 .as_ref()
+                 .iter()
+                 .map(|b| format!("{:02X}", b))
+                 .collect::<String>());
 }
 
 fn main() {
@@ -74,17 +83,12 @@ fn main() {
             // TODO: There's got to be some way to do this ourselves, instead of using crt.sh as a
             // glorified AIA chaser.
             println!("Only one certificate in chain, using crt.sh to build a full chain ...");
-            chain = build_chain(&http_client, &chain[0]);
+            chain = build_chain_for_cert(&http_client, &chain[0]);
         }
         let scts = submit_cert_to_logs(&http_client, &logs, &chain);
 
         // TODO: is there a better way to do this hex-encoding?
-        println!("Find the cert on crt.sh: https://crt.sh?q={}",
-                 digest::digest(&digest::SHA256, &chain[0])
-                     .as_ref()
-                     .iter()
-                     .map(|b| format!("{:02X}", b))
-                     .collect::<String>());
+        println!("Find the cert on crt.sh: {}", crtsh_url_for_cert(&chain[0]));
 
         let mut table = prettytable::Table::new();
         table.add_row(row!["Log", "SCT"]);
