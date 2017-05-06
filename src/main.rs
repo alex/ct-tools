@@ -48,6 +48,7 @@ fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec<u8>
 }
 
 fn crtsh_url_for_cert(cert: &[u8]) -> String {
+    // TODO: is there a better way to do this hex-encoding?
     return format!("https://crt.sh?q={}",
                    digest::digest(&digest::SHA256, &cert)
                        .as_ref()
@@ -87,9 +88,7 @@ fn main() {
         }
         let scts = submit_cert_to_logs(&http_client, &logs, &chain);
 
-        // TODO: is there a better way to do this hex-encoding?
         println!("Find the cert on crt.sh: {}", crtsh_url_for_cert(&chain[0]));
-
         let mut table = prettytable::Table::new();
         table.add_row(row!["Log", "SCT"]);
         for (log, sct) in scts {
