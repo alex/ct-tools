@@ -1,11 +1,12 @@
 # ct-submitter
 
-Some Rust code for submitting a cert to all of Chrome's trusted CT logs and getting back the SCTs
+Some Rust code for submitting a cert to all of Chrome's trusted CT logs and
+getting back the SCTs
 
 Usage:
 
 ```
-$ cargo run path/to/cert-or-chain.pem ....
+$ cargo run submit path/to/cert-or-chain.pem ....
 ```
 
 If the argument is a chain (more than one certificate) `ct-submitter` will
@@ -15,9 +16,11 @@ automatically build a chain using [`crt.sh`](https://crt.sh/).
 Example:
 
 ```
-❯❯❯ cargo run example-chain.pem
+❯❯❯ cargo run submit example-chain.pem
     Finished dev [unoptimized + debuginfo] target(s) in 0.0 secs
      Running `target/debug/ct-submitter example-chain.pem`
+Submitting example-chain.pem ...
+Find the cert on crt.sh: https://crt.sh?q=96F82FADFE9B285A17FDD7E5B00BB31C7659EF44FB6B00B4C2C7EB08C78FE783
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | Log                    | SCT                                                                                                                                                              |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -29,5 +32,4 @@ Example:
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | WoSign log             | AEGy3C6J5jzkrxunuym/aMbe5vnxzAR+MN/647O6JZJjAAABW4lzUiEAAAQDAEYwRAIgat0S/80gyWkMPbWrmmPShx76SYjlCelNyMnZB08oqRUCIDyXxyBGGgdHAGdgwVnnK8ug16XhZGSukzDf5eRE9m2y     |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-Find the cert on crt.sh: https://crt.sh?q=96F82FADFE9B285A17FDD7E5B00BB31C7659EF44FB6B00B4C2C7EB08C78FE783
 ```

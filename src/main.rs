@@ -1,4 +1,5 @@
 extern crate base64;
+extern crate clap;
 extern crate hex;
 extern crate hyper;
 extern crate hyper_native_tls;
@@ -11,7 +12,6 @@ extern crate url;
 
 extern crate ct_submitter;
 
-use std::{env, process};
 use std::fs::File;
 use std::io::Read;
 
@@ -58,20 +58,14 @@ fn crtsh_url_for_cert(cert: &[u8]) -> String {
                        .to_uppercase());
 }
 
-fn main() {
-    if env::args().len() == 1 {
-        println!("Usage: {} <cert-or-chain.pem ...>",
-                 env::args().next().unwrap());
-        process::exit(1);
-    }
-
+fn submit(paths: clap::Values) {
     let http_client = hyper::Client::with_connector(
         hyper::net::HttpsConnector::new(hyper_native_tls::NativeTlsClient::new().unwrap())
     );
     // TODO: timeout on the http_client, but for submit_cert_to_logs only, not build_chain
     let logs = fetch_trusted_ct_logs(&http_client);
 
-    for path in env::args().skip(1) {
+    for path in paths {
         println!("Submitting {} ...", path);
 
         let mut contents = String::new();
@@ -99,5 +93,19 @@ fn main() {
         println!();
         println!();
     }
+}
 
+fn main() {
+    let matches = clap::App::new("ct-submitter")
+        .subcommand(clap::SubCommand::with_name("submit")
+                        .about("Directly submits certificates to CT logs")
+                        .arg(clap::Arg::with_name("path")
+                                 .multiple(true)
+                                 .required(true)
+                                 .help("path to certificate or chain")))
+        .get_matches();
+
+    if let Some(matches) = matches.subcommand_matches("submit") {
+        submit(matches.values_of("path").unwrap());
+    }
 }

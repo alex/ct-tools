@@ -8,6 +8,8 @@ base64 = "*"
 
 byteorder = "*"
 
+clap = "*"
+
 hex = "*"
 
 hyper = "*"
