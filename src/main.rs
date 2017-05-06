@@ -78,13 +78,6 @@ fn main() {
         }
         let scts = submit_cert_to_logs(&http_client, &logs, &chain);
 
-        let mut table = prettytable::Table::new();
-        table.add_row(row!["Log", "SCT"]);
-        for (log, sct) in scts {
-            table.add_row(row![log.description, base64::encode(&sct.to_raw_bytes())]);
-        }
-        table.printstd();
-
         // TODO: is there a better way to do this hex-encoding?
         println!("Find the cert on crt.sh: https://crt.sh?q={}",
                  digest::digest(&digest::SHA256, &chain[0])
@@ -92,6 +85,13 @@ fn main() {
                      .iter()
                      .map(|b| format!("{:02X}", b))
                      .collect::<String>());
+
+        let mut table = prettytable::Table::new();
+        table.add_row(row!["Log", "SCT"]);
+        for (log, sct) in scts {
+            table.add_row(row![log.description, base64::encode(&sct.to_raw_bytes())]);
+        }
+        table.printstd();
         println!();
         println!();
     }
