@@ -13,7 +13,6 @@ extern crate ct_submitter;
 use std::{env, process};
 use std::fs::File;
 use std::io::Read;
-use std::time::Duration;
 
 use ring::digest;
 
@@ -54,9 +53,10 @@ fn main() {
         process::exit(1);
     }
 
-    let mut http_client = hyper::Client::with_connector(
+    let http_client = hyper::Client::with_connector(
         hyper::net::HttpsConnector::new(hyper_native_tls::NativeTlsClient::new().unwrap())
     );
+    // TODO: timeout on the http_client, but for submit_cert_to_logs only, not build_chain
     let logs = fetch_trusted_ct_logs(&http_client);
 
     for path in env::args().skip(1) {
