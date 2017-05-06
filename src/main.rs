@@ -49,11 +49,11 @@ fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec<u8>
 
 fn crtsh_url_for_cert(cert: &[u8]) -> String {
     return format!("https://crt.sh?q={}",
-             digest::digest(&digest::SHA256, &cert)
-                 .as_ref()
-                 .iter()
-                 .map(|b| format!("{:02X}", b))
-                 .collect::<String>());
+                   digest::digest(&digest::SHA256, &cert)
+                       .as_ref()
+                       .iter()
+                       .map(|b| format!("{:02X}", b))
+                       .collect::<String>());
 }
 
 fn main() {
