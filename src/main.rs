@@ -1,4 +1,5 @@
 extern crate base64;
+extern crate hex;
 extern crate hyper;
 extern crate hyper_native_tls;
 extern crate pem;
@@ -13,6 +14,8 @@ extern crate ct_submitter;
 use std::{env, process};
 use std::fs::File;
 use std::io::Read;
+
+use hex::ToHex;
 
 use ring::digest;
 
@@ -48,13 +51,11 @@ fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec<u8>
 }
 
 fn crtsh_url_for_cert(cert: &[u8]) -> String {
-    // TODO: is there a better way to do this hex-encoding?
     return format!("https://crt.sh?q={}",
                    digest::digest(&digest::SHA256, &cert)
                        .as_ref()
-                       .iter()
-                       .map(|b| format!("{:02X}", b))
-                       .collect::<String>());
+                       .to_hex()
+                       .to_uppercase());
 }
 
 fn main() {

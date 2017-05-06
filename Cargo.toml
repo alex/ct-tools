@@ -8,6 +8,8 @@ base64 = "*"
 
 byteorder = "*"
 
+hex = "*"
+
 hyper = "*"
 hyper-native-tls = "*"
 
