@@ -5,7 +5,7 @@ Some Rust code for submitting a cert to all of Chrome's trusted CT logs and gett
 Usage:
 
 ```
-$ cargo run path/to/cert-or-chain.pem
+$ cargo run path/to/cert-or-chain.pem ....
 ```
 
 If the argument is a chain (more than one certificate) `ct-submitter` will
