@@ -41,15 +41,16 @@ fn build_chain(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec<u8>> {
 
     let add_chain_request: AddChainRequest = serde_json::from_reader(response).unwrap();
     return add_chain_request
-        .chain
-        .iter()
-        .map(|c| base64::decode(c).unwrap())
-        .collect();
+               .chain
+               .iter()
+               .map(|c| base64::decode(c).unwrap())
+               .collect();
 }
 
 fn main() {
     if env::args().len() == 1 {
-        println!("Usage: {} <cert-or-chain.pem ...>", env::args().next().unwrap());
+        println!("Usage: {} <cert-or-chain.pem ...>",
+                 env::args().next().unwrap());
         process::exit(1);
     }
 
@@ -91,8 +92,8 @@ fn main() {
                      .iter()
                      .map(|b| format!("{:02X}", b))
                      .collect::<String>());
-         println!();
-         println!();
+        println!();
+        println!();
     }
 
 }
