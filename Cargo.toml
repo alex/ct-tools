@@ -13,7 +13,7 @@ clap = "*"
 hex = "*"
 
 hyper = "*"
-hyper-native-tls = "*"
+hyper-rustls = "*"
 
 rayon = "*"
 

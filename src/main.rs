@@ -2,7 +2,7 @@ extern crate base64;
 extern crate clap;
 extern crate hex;
 extern crate hyper;
-extern crate hyper_native_tls;
+extern crate hyper_rustls;
 extern crate pem;
 #[macro_use]
 extern crate prettytable;
@@ -60,7 +60,7 @@ fn crtsh_url_for_cert(cert: &[u8]) -> String {
 
 fn submit(paths: clap::Values) {
     let http_client = hyper::Client::with_connector(
-        hyper::net::HttpsConnector::new(hyper_native_tls::NativeTlsClient::new().unwrap())
+        hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
     );
     // TODO: timeout on the http_client, but for submit_cert_to_logs only, not build_chain
     let logs = fetch_trusted_ct_logs(&http_client);
