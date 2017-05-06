@@ -24,7 +24,7 @@ fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {
                .into_iter()
                .filter(|p| p.tag == "CERTIFICATE")
                .map(|p| p.contents)
-               .collect::<Vec<_>>();
+               .collect();
 }
 
 fn build_chain(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec<u8>> {
