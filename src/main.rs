@@ -5,16 +5,19 @@ extern crate hyper_rustls;
 extern crate pem;
 #[macro_use]
 extern crate prettytable;
+extern crate ring;
+extern crate rustls;
 extern crate serde_json;
 
 extern crate ct_tools;
 
-
 use ct_tools::{censys, crtsh};
+use ct_tools::common::Log;
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
 use std::fs::File;
 use std::io::Read;
+use std::sync::Arc;
 
 
 fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {
@@ -86,6 +89,45 @@ fn check(paths: clap::Values) {
     }
 }
 
+struct HttpHandler {
+    http_client: hyper::Client,
+    logs: Vec<Log>,
+}
+
+impl hyper::server::Handler for HttpHandler {
+    fn handle(&self, request: hyper::server::Request, _: hyper::server::Response) {
+        let certs = request.ssl::<hyper_rustls::WrappedStream>().unwrap();
+        // .to_tls_stream()
+        // .get_session()
+        // .get_peer_certificates();
+    }
+}
+
+fn server(private_key_path: &str, certificate_path: &str) {
+    let mut tls_config = rustls::ServerConfig::new();
+    tls_config.client_auth_offer = true;
+    tls_config.client_auth_mandatory = true;
+    tls_config.set_single_cert(hyper_rustls::util::load_certs(certificate_path).unwrap(),
+                               hyper_rustls::util::load_private_key(private_key_path).unwrap());
+    let tls_server = hyper_rustls::TlsServer { cfg: Arc::new(tls_config) };
+
+    let http_client = hyper::Client::with_connector(
+        hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
+    );
+    let logs = fetch_trusted_ct_logs(&http_client);
+    let handler = HttpHandler {
+        http_client: http_client,
+        logs: logs,
+    };
+
+    let addr = "127.0.0.1:1337";
+    println!("Listening on https://{} ...", addr);
+    hyper::Server::https(addr, tls_server)
+        .unwrap()
+        .handle(handler)
+        .unwrap();
+}
+
 fn main() {
     let matches = clap::App::new("ct-tools")
         .subcommand(clap::SubCommand::with_name("submit")
@@ -100,11 +142,26 @@ fn main() {
                                  .multiple(true)
                                  .required(true)
                                  .help("Path to certificate or chain")))
+        .subcommand(clap::SubCommand::with_name("server")
+                        .about("Run an HTTPS server that submits client to CT logs")
+                        .arg(clap::Arg::with_name("private-key")
+                                 .takes_value(true)
+                                 .long("--private-key")
+                                 .required(true)
+                                 .help("Path to private key for the server"))
+                        .arg(clap::Arg::with_name("certificate")
+                                 .takes_value(true)
+                                 .long("--certificate")
+                                 .required(true)
+                                 .help("Path to certificate for the server")))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("submit") {
         submit(matches.values_of("path").unwrap());
     } else if let Some(matches) = matches.subcommand_matches("check") {
         check(matches.values_of("path").unwrap());
+    } else if let Some(matches) = matches.subcommand_matches("server") {
+        server(matches.value_of("private-key").unwrap(),
+               matches.value_of("certificate").unwrap());
     }
 }

@@ -13,11 +13,13 @@ clap = "*"
 hex = "*"
 
 hyper = "*"
-hyper-rustls = "*"
+hyper-rustls = ">=0.5"
 
 rayon = "*"
 
 ring = "*"
+
+rustls = "*"
 
 serde = "*"
 serde_derive = "*"
