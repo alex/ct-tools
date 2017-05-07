@@ -99,10 +99,12 @@ struct HttpHandler {
 
 impl hyper::server::Handler for HttpHandler {
     fn handle(&self, request: hyper::server::Request, response: hyper::server::Response) {
-        let certs = request.ssl::<hyper_rustls::WrappedStream>().unwrap();
-        // .to_tls_stream()
-        // .get_session()
-        // .get_peer_certificates();
+        let certs = request
+            .ssl::<hyper_rustls::WrappedStream>()
+            .unwrap()
+            .to_tls_stream()
+            .get_session()
+            .get_peer_certificates();
         response
             .send(self.templates
                       .render("home.html", &tera::Context::new())
