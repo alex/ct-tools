@@ -109,25 +109,41 @@ impl hyper::server::Handler for HttpHandler {
             .get_session()
             .get_peer_certificates();
 
+        let mut crtsh_url = None;
+        if peer_certs.is_some() && request.method == hyper::method::Method::Post {
+            // TODO: is this chain complete, or do we need to `build_chain_for_cert`
+            let chain = peer_certs
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(|c| c.0.to_vec())
+                .collect::<Vec<_>>();
+            let scts = submit_cert_to_logs(&self.http_client, &self.logs, &chain);
+            if scts.len() == 0 {
+                crtsh_url = Some(crtsh_url_for_cert(&chain[0]));
+            }
+        }
+
         let rendered_cert = peer_certs.map(|chain| {
             let mut tmp = tempfile::NamedTempFile::new().unwrap();
-            tmp.write_all(&chain[0].0);
+            tmp.write_all(&chain[0].0).unwrap();
             tmp.flush().unwrap();
             return Command::new("openssl")
-                .arg("x509")
-                .arg("-text")
-                .arg("-noout")
-                .arg("-inform")
-                .arg("der")
-                .arg("-in")
-                .arg(tmp.path().as_os_str())
-                .output()
-                .unwrap()
-                .stdout;
+                       .arg("x509")
+                       .arg("-text")
+                       .arg("-noout")
+                       .arg("-inform")
+                       .arg("der")
+                       .arg("-in")
+                       .arg(tmp.path().as_os_str())
+                       .output()
+                       .unwrap()
+                       .stdout;
         });
 
         let mut context = tera::Context::new();
         context.add("cert", &rendered_cert);
+        context.add("crtsh_url", &crtsh_url);
         response
             .send(self.templates
                       .render("home.html", &context)
