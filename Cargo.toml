@@ -29,4 +29,6 @@ pem = "*"
 
 prettytable-rs = "*"
 
+tera = ">=0.10.4"
+
 url = "*"

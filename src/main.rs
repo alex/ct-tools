@@ -8,6 +8,8 @@ extern crate prettytable;
 extern crate ring;
 extern crate rustls;
 extern crate serde_json;
+#[macro_use]
+extern crate tera;
 
 extern crate ct_tools;
 
@@ -16,7 +18,7 @@ use ct_tools::common::Log;
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
 use std::fs::File;
-use std::io::Read;
+use std::io::{BufReader, Read};
 use std::sync::Arc;
 
 
@@ -90,25 +92,32 @@ fn check(paths: clap::Values) {
 }
 
 struct HttpHandler {
+    templates: tera::Tera,
     http_client: hyper::Client,
     logs: Vec<Log>,
 }
 
 impl hyper::server::Handler for HttpHandler {
-    fn handle(&self, request: hyper::server::Request, _: hyper::server::Response) {
+    fn handle(&self, request: hyper::server::Request, response: hyper::server::Response) {
         let certs = request.ssl::<hyper_rustls::WrappedStream>().unwrap();
         // .to_tls_stream()
         // .get_session()
         // .get_peer_certificates();
+        response.send(self.templates.render("home.html", &tera::Context::new()).unwrap().as_bytes()).unwrap();
     }
 }
 
-fn server(private_key_path: &str, certificate_path: &str) {
+fn server(private_key_path: &str, certificate_path: &str, client_trust_store_path: &str) {
     let mut tls_config = rustls::ServerConfig::new();
     tls_config.client_auth_offer = true;
-    tls_config.client_auth_mandatory = true;
+    tls_config
+        .client_auth_roots
+        .add_pem_file(&mut BufReader::new(File::open(client_trust_store_path).unwrap()))
+        .unwrap();
     tls_config.set_single_cert(hyper_rustls::util::load_certs(certificate_path).unwrap(),
                                hyper_rustls::util::load_private_key(private_key_path).unwrap());
+    tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
+    tls_config.ticketer = rustls::Ticketer::new();
     let tls_server = hyper_rustls::TlsServer { cfg: Arc::new(tls_config) };
 
     let http_client = hyper::Client::with_connector(
@@ -116,6 +125,7 @@ fn server(private_key_path: &str, certificate_path: &str) {
     );
     let logs = fetch_trusted_ct_logs(&http_client);
     let handler = HttpHandler {
+        templates: compile_templates!("templates/*"),
         http_client: http_client,
         logs: logs,
     };
@@ -153,7 +163,12 @@ fn main() {
                                  .takes_value(true)
                                  .long("--certificate")
                                  .required(true)
-                                 .help("Path to certificate for the server")))
+                                 .help("Path to certificate for the server"))
+                        .arg(clap::Arg::with_name("client-trust-store")
+                                 .takes_value(true)
+                                 .long("--client-trust-store")
+                                 .required(true)
+                                 .help("Path to trust store for client certificates")))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("submit") {
@@ -162,6 +177,7 @@ fn main() {
         check(matches.values_of("path").unwrap());
     } else if let Some(matches) = matches.subcommand_matches("server") {
         server(matches.value_of("private-key").unwrap(),
-               matches.value_of("certificate").unwrap());
+               matches.value_of("certificate").unwrap(),
+               matches.value_of("client-trust-store").unwrap());
     }
 }
