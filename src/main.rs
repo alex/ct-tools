@@ -8,13 +8,15 @@ extern crate prettytable;
 extern crate ring;
 extern crate rustls;
 extern crate serde_json;
+extern crate tempfile;
 #[macro_use]
 extern crate tera;
 
 extern crate ct_tools;
 
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Read, Write};
+use std::process::Command;
 use std::sync::Arc;
 
 use ct_tools::{censys, crtsh};
@@ -100,15 +102,35 @@ struct HttpHandler {
 
 impl hyper::server::Handler for HttpHandler {
     fn handle(&self, request: hyper::server::Request, response: hyper::server::Response) {
-        let certs = request
+        let peer_certs = request
             .ssl::<hyper_rustls::WrappedStream>()
             .unwrap()
             .to_tls_stream()
             .get_session()
             .get_peer_certificates();
+
+        let rendered_cert = peer_certs.map(|chain| {
+            let mut tmp = tempfile::NamedTempFile::new().unwrap();
+            tmp.write_all(&chain[0].0);
+            tmp.flush().unwrap();
+            return Command::new("openssl")
+                .arg("x509")
+                .arg("-text")
+                .arg("-noout")
+                .arg("-inform")
+                .arg("der")
+                .arg("-in")
+                .arg(tmp.path().as_os_str())
+                .output()
+                .unwrap()
+                .stdout;
+        });
+
+        let mut context = tera::Context::new();
+        context.add("cert", &rendered_cert);
         response
             .send(self.templates
-                      .render("home.html", &tera::Context::new())
+                      .render("home.html", &context)
                       .unwrap()
                       .as_bytes())
             .unwrap();

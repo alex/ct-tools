@@ -26,6 +26,14 @@
                         work.
                     </p>
                 {% else %}
+                    <p>
+                        Looks like your certificate is all set up, take a look
+                        and make sure you're ready to submit it:
+                    </p>
+                    <pre>{{ cert }}</pre>
+                    <form method="POST">
+                        <input type="submit" />
+                    </form>
                 {% endif %}
             </div>
         </div>
