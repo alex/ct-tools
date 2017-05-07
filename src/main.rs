@@ -103,7 +103,12 @@ impl hyper::server::Handler for HttpHandler {
         // .to_tls_stream()
         // .get_session()
         // .get_peer_certificates();
-        response.send(self.templates.render("home.html", &tera::Context::new()).unwrap().as_bytes()).unwrap();
+        response
+            .send(self.templates
+                      .render("home.html", &tera::Context::new())
+                      .unwrap()
+                      .as_bytes())
+            .unwrap();
     }
 }
 
