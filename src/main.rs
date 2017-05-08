@@ -119,7 +119,7 @@ impl hyper::server::Handler for HttpHandler {
                 .collect::<Vec<_>>();
             let scts = submit_cert_to_logs(&self.http_client, &self.logs, &chain);
             if scts.len() == 0 {
-                crtsh_url = Some(crtsh_url_for_cert(&chain[0]));
+                crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
             }
         }
 
