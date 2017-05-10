@@ -19,7 +19,8 @@ use hex::ToHex;
 
 use ring::digest;
 
-use ct_submitter::{fetch_trusted_ct_logs, submit_cert_to_logs, AddChainRequest};
+use ct_submitter::ct::{submit_cert_to_logs, AddChainRequest};
+use ct_submitter::google::fetch_trusted_ct_logs;
 
 
 fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {
