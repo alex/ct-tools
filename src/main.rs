@@ -91,12 +91,12 @@ fn main() {
                         .arg(clap::Arg::with_name("path")
                                  .multiple(true)
                                  .required(true)
-                                 .help("path to certificate or chain")))
+                                 .help("Path to certificate or chain")))
         .subcommand(clap::SubCommand::with_name("check")
                         .about("Checks whether a certificate exists in CT logs")
                         .arg(clap::Arg::with_name("path")
                                  .required(true)
-                                 .help("path to certificate or chain")))
+                                 .help("Path to certificate or chain")))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("submit") {
