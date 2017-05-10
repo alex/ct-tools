@@ -10,7 +10,7 @@ extern crate ring;
 extern crate serde_json;
 extern crate url;
 
-extern crate ct_submitter;
+extern crate ct_tools;
 
 use std::fs::File;
 use std::io::Read;
@@ -19,8 +19,8 @@ use hex::ToHex;
 
 use ring::digest;
 
-use ct_submitter::ct::{submit_cert_to_logs, AddChainRequest};
-use ct_submitter::google::fetch_trusted_ct_logs;
+use ct_tools::ct::{submit_cert_to_logs, AddChainRequest};
+use ct_tools::google::fetch_trusted_ct_logs;
 
 
 fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {

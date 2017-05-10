@@ -1,5 +1,5 @@
 [root]
-name = "ct-submitter"
+name = "ct-tools"
 version = "0.1.0"
 dependencies = [
  "base64 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
