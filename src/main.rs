@@ -20,7 +20,7 @@ use std::process::Command;
 use std::sync::Arc;
 
 use ct_tools::{censys, crtsh};
-use ct_tools::common::Log;
+use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
 
@@ -121,6 +121,7 @@ impl hyper::server::Handler for HttpHandler {
             let scts = submit_cert_to_logs(&self.http_client, &self.logs, &chain);
             if scts.len() == 0 {
                 crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
+                println!("Successfully submitted: {}", sha256_hex(&chain[0]));
             }
         }
 
