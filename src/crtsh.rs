@@ -3,10 +3,7 @@ use hyper;
 use serde_json;
 use url;
 
-use hex::ToHex;
-
-use ring::digest;
-
+use super::common::sha256_hex;
 use super::ct::AddChainRequest;
 
 
@@ -31,9 +28,5 @@ pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec
 }
 
 pub fn url_for_cert(cert: &[u8]) -> String {
-    return format!("https://crt.sh?q={}",
-                   digest::digest(&digest::SHA256, &cert)
-                       .as_ref()
-                       .to_hex()
-                       .to_uppercase());
+    return format!("https://crt.sh?q={}", sha256_hex(cert).to_uppercase());
 }
