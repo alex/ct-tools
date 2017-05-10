@@ -1,25 +1,19 @@
 extern crate base64;
 extern crate clap;
-extern crate hex;
 extern crate hyper;
 extern crate hyper_rustls;
 extern crate pem;
 #[macro_use]
 extern crate prettytable;
-extern crate ring;
 extern crate serde_json;
-extern crate url;
 
 extern crate ct_tools;
 
 use std::fs::File;
 use std::io::Read;
 
-use hex::ToHex;
-
-use ring::digest;
-
-use ct_tools::ct::{submit_cert_to_logs, AddChainRequest};
+use ct_tools::crtsh::{build_chain_for_cert, url_for_cert};
+use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
 
 
@@ -29,34 +23,6 @@ fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {
                .filter(|p| p.tag == "CERTIFICATE")
                .map(|p| p.contents)
                .collect();
-}
-
-fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec<u8>> {
-    let body = url::form_urlencoded::Serializer::new(String::new())
-        .append_pair("b64cert", &base64::encode(cert))
-        .finish();
-    let body_bytes = body.as_bytes();
-    let response = http_client
-        .post("https://crt.sh/gen-add-chain")
-        .header(hyper::header::ContentType::form_url_encoded())
-        .body(hyper::client::Body::BufBody(body_bytes, body_bytes.len()))
-        .send()
-        .unwrap();
-
-    let add_chain_request: AddChainRequest = serde_json::from_reader(response).unwrap();
-    return add_chain_request
-               .chain
-               .iter()
-               .map(|c| base64::decode(c).unwrap())
-               .collect();
-}
-
-fn crtsh_url_for_cert(cert: &[u8]) -> String {
-    return format!("https://crt.sh?q={}",
-                   digest::digest(&digest::SHA256, &cert)
-                       .as_ref()
-                       .to_hex()
-                       .to_uppercase());
 }
 
 fn submit(paths: clap::Values) {
@@ -84,7 +50,7 @@ fn submit(paths: clap::Values) {
         }
         let scts = submit_cert_to_logs(&http_client, &logs, &chain);
 
-        println!("Find the cert on crt.sh: {}", crtsh_url_for_cert(&chain[0]));
+        println!("Find the cert on crt.sh: {}", url_for_cert(&chain[0]));
         let mut table = prettytable::Table::new();
         table.add_row(row!["Log", "SCT"]);
         for (log, sct) in scts {
