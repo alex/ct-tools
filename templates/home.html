@@ -41,8 +41,14 @@
                         and make sure you're ready to submit it:
                     </p>
                     <pre>{{ cert }}</pre>
+                    <div class="alert alert-warning">
+                        Pushing this button will irrevokably submit your data.
+                        Don't press unless you're sure.
+                    </div>
                     <form method="POST">
-                        <input type="submit" />
+                        <button type="submit" class="btn btn-primary btn-lg btn-block">
+                            Submit
+                        </button>
                     </form>
                 {% endif %}
             </div>
