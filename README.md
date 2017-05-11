@@ -18,7 +18,7 @@ Example:
 ```
 ❯❯❯ cargo run submit example-chain.pem
     Finished dev [unoptimized + debuginfo] target(s) in 0.0 secs
-     Running `target/debug/ct-tools example-chain.pem`
+     Running `target/debug/ct-tools submit example-chain.pem`
 Submitting example-chain.pem ...
 Find the cert on crt.sh: https://crt.sh?q=96F82FADFE9B285A17FDD7E5B00BB31C7659EF44FB6B00B4C2C7EB08C78FE783
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -32,4 +32,14 @@ Find the cert on crt.sh: https://crt.sh?q=96F82FADFE9B285A17FDD7E5B00BB31C7659EF
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | WoSign log             | AEGy3C6J5jzkrxunuym/aMbe5vnxzAR+MN/647O6JZJjAAABW4lzUiEAAAQDAEYwRAIgat0S/80gyWkMPbWrmmPShx76SYjlCelNyMnZB08oqRUCIDyXxyBGGgdHAGdgwVnnK8ug16XhZGSukzDf5eRE9m2y     |
 +------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+```
+
+You can also use it to check if a certificate is already in CT, without
+submitting it:
+
+```
+❯❯❯ cargo run check example-chain.pem
+    Finished dev [unoptimized + debuginfo] target(s) in 0.1 secs
+     Running `target/debug/ct-tools check example-chain.pem`
+example-chain.pem was already logged
 ```
