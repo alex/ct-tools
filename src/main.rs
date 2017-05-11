@@ -87,7 +87,7 @@ fn check(paths: clap::Values) {
 }
 
 fn main() {
-    let matches = clap::App::new("ct-submitter")
+    let matches = clap::App::new("ct-tools")
         .subcommand(clap::SubCommand::with_name("submit")
                         .about("Directly submits certificates to CT logs")
                         .arg(clap::Arg::with_name("path")
