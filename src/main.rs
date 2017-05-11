@@ -63,24 +63,26 @@ fn submit(paths: clap::Values) {
     }
 }
 
-fn check(path: &str) {
+fn check(paths: clap::Values) {
     let http_client = hyper::Client::with_connector(
         hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
     );
 
-    let mut contents = String::new();
-    File::open(path)
-        .unwrap()
-        .read_to_string(&mut contents)
-        .unwrap();
+    for path in paths {
+        let mut contents = String::new();
+        File::open(path)
+            .unwrap()
+            .read_to_string(&mut contents)
+            .unwrap();
 
-    let chain = pems_to_chain(&contents);
+        let chain = pems_to_chain(&contents);
 
-    let is_logged = censys::is_cert_logged(&http_client, &chain[0]);
-    if is_logged {
-        println!("{} was already logged", path);
-    } else {
-        println!("{} has not been logged", path);
+        let is_logged = censys::is_cert_logged(&http_client, &chain[0]);
+        if is_logged {
+            println!("{} was already logged", path);
+        } else {
+            println!("{} has not been logged", path);
+        }
     }
 }
 
@@ -95,6 +97,7 @@ fn main() {
         .subcommand(clap::SubCommand::with_name("check")
                         .about("Checks whether a certificate exists in CT logs")
                         .arg(clap::Arg::with_name("path")
+                                 .multiple(true)
                                  .required(true)
                                  .help("Path to certificate or chain")))
         .get_matches();
@@ -102,6 +105,6 @@ fn main() {
     if let Some(matches) = matches.subcommand_matches("submit") {
         submit(matches.values_of("path").unwrap());
     } else if let Some(matches) = matches.subcommand_matches("check") {
-        check(matches.value_of("path").unwrap());
+        check(matches.values_of("path").unwrap());
     }
 }
