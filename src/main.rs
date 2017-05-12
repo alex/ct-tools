@@ -162,6 +162,9 @@ fn server(private_key_path: &str, certificate_path: &str) {
                                hyper_rustls::util::load_private_key(private_key_path).unwrap());
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
+    // Disable certificate verificaion. In any normal context, this would be horribly dangerous!
+    // However, all we're doing is taking the certs and then turning around and submitting them to
+    // CT logs, so it doesn't matter if they're verified.
     tls_config.dangerous_config =
         Some(rustls::DangerousServerConfig { disable_certificate_verification: true });
     let tls_server = hyper_rustls::TlsServer { cfg: Arc::new(tls_config) };
