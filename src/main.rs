@@ -155,7 +155,7 @@ impl hyper::server::Handler for HttpHandler {
     }
 }
 
-fn server(private_key_path: &str, certificate_path: &str, client_trust_store_path: &str) {
+fn server(private_key_path: &str, certificate_path: &str) {
     let mut tls_config = rustls::ServerConfig::new();
     tls_config.client_auth_offer = true;
     tls_config.set_single_cert(hyper_rustls::util::load_certs(certificate_path).unwrap(),
@@ -214,12 +214,7 @@ fn main() {
                                  .takes_value(true)
                                  .long("--certificate")
                                  .required(true)
-                                 .help("Path to certificate for the server"))
-                        .arg(clap::Arg::with_name("client-trust-store")
-                                 .takes_value(true)
-                                 .long("--client-trust-store")
-                                 .required(true)
-                                 .help("Path to trust store for client certificates")))
+                                 .help("Path to certificate for the server")))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("submit") {
@@ -228,7 +223,6 @@ fn main() {
         check(matches.values_of("path").unwrap());
     } else if let Some(matches) = matches.subcommand_matches("server") {
         server(matches.value_of("private-key").unwrap(),
-               matches.value_of("certificate").unwrap(),
-               matches.value_of("client-trust-store").unwrap());
+               matches.value_of("certificate").unwrap());
     }
 }
