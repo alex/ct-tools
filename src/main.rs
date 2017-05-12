@@ -14,7 +14,7 @@ extern crate tera;
 
 extern crate ct_tools;
 
-use ct_tools::{censys, crtsh};
+use ct_tools::{censys, crtsh, letsencrypt};
 use ct_tools::common::{Log, sha256_hex};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
@@ -158,8 +158,8 @@ impl hyper::server::Handler for HttpHandler {
 fn server(private_key_path: &str, certificate_path: &str) {
     let mut tls_config = rustls::ServerConfig::new();
     tls_config.client_auth_offer = true;
-    tls_config.set_single_cert(hyper_rustls::util::load_certs(certificate_path).unwrap(),
-                               hyper_rustls::util::load_private_key(private_key_path).unwrap());
+    tls_config.cert_resolver =
+        Box::new(letsencrypt::AutomaticCertResolver::new(vec!["localhost".to_string()]));
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
     // Disable certificate verificaion. In any normal context, this would be horribly dangerous!
