@@ -19,9 +19,10 @@ use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
 use std::fs::File;
-use std::io::{BufReader, Read, Write};
+use std::io::{Read, Write};
 use std::process::Command;
 use std::sync::Arc;
+use std::time::Duration;
 
 
 fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {
@@ -128,17 +129,18 @@ impl hyper::server::Handler for HttpHandler {
             let mut tmp = tempfile::NamedTempFile::new().unwrap();
             tmp.write_all(&chain[0].0).unwrap();
             tmp.flush().unwrap();
-            return Command::new("openssl")
-                       .arg("x509")
-                       .arg("-text")
-                       .arg("-noout")
-                       .arg("-inform")
-                       .arg("der")
-                       .arg("-in")
-                       .arg(tmp.path().as_os_str())
-                       .output()
-                       .unwrap()
-                       .stdout;
+            let stdout = Command::new("openssl")
+                .arg("x509")
+                .arg("-text")
+                .arg("-noout")
+                .arg("-inform")
+                .arg("der")
+                .arg("-in")
+                .arg(tmp.path().as_os_str())
+                .output()
+                .unwrap()
+                .stdout;
+            return String::from_utf8_lossy(&stdout).into_owned();
         });
 
         let mut context = tera::Context::new();
@@ -153,23 +155,23 @@ impl hyper::server::Handler for HttpHandler {
     }
 }
 
-fn server(private_key_path: &str, certificate_path: &str, client_trust_store_path: &str) {
+fn server(private_key_path: &str, certificate_path: &str) {
     let mut tls_config = rustls::ServerConfig::new();
     tls_config.client_auth_offer = true;
-    tls_config
-        .client_auth_roots
-        .add_pem_file(&mut BufReader::new(File::open(client_trust_store_path).unwrap()))
-        .unwrap();
     tls_config.set_single_cert(hyper_rustls::util::load_certs(certificate_path).unwrap(),
                                hyper_rustls::util::load_private_key(private_key_path).unwrap());
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
+    tls_config.dangerous_config =
+        Some(rustls::DangerousServerConfig { disable_certificate_verification: true });
     let tls_server = hyper_rustls::TlsServer { cfg: Arc::new(tls_config) };
 
-    let http_client = hyper::Client::with_connector(
+    let mut http_client = hyper::Client::with_connector(
         hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
     );
     let logs = fetch_trusted_ct_logs(&http_client);
+    http_client.set_write_timeout(Some(Duration::from_secs(5)));
+    http_client.set_read_timeout(Some(Duration::from_secs(5)));
     let handler = HttpHandler {
         templates: compile_templates!("templates/*"),
         http_client: http_client,
@@ -209,12 +211,7 @@ fn main() {
                                  .takes_value(true)
                                  .long("--certificate")
                                  .required(true)
-                                 .help("Path to certificate for the server"))
-                        .arg(clap::Arg::with_name("client-trust-store")
-                                 .takes_value(true)
-                                 .long("--client-trust-store")
-                                 .required(true)
-                                 .help("Path to trust store for client certificates")))
+                                 .help("Path to certificate for the server")))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("submit") {
@@ -223,7 +220,6 @@ fn main() {
         check(matches.values_of("path").unwrap());
     } else if let Some(matches) = matches.subcommand_matches("server") {
         server(matches.value_of("private-key").unwrap(),
-               matches.value_of("certificate").unwrap(),
-               matches.value_of("client-trust-store").unwrap());
+               matches.value_of("certificate").unwrap());
     }
 }
