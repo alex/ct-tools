@@ -151,6 +151,18 @@ impl hyper::server::Handler for HttpHandler {
     }
 }
 
+struct NoVerificationCertificateVerifier;
+impl rustls::ClientCertVerifier for NoVerificationCertificateVerifier {
+    fn verify_client_cert(&self,
+                          _: &rustls::RootCertStore,
+                          _: &[rustls::Certificate])
+                          -> Result<(), rustls::TLSError> {
+        Ok(())
+    }
+}
+static NO_VERIFICATION: NoVerificationCertificateVerifier = NoVerificationCertificateVerifier;
+
+
 fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) {
     match (local_dev, domain, letsencrypt_env) {
         (true, Some(_), _) |
@@ -189,11 +201,12 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     }
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
-    // Disable certificate verificaion. In any normal context, this would be horribly dangerous!
+    // Disable certificate verification. In any normal context, this would be horribly insecure!
     // However, all we're doing is taking the certs and then turning around and submitting them to
     // CT logs, so it doesn't matter if they're verified.
-    tls_config.dangerous_config =
-        Some(rustls::DangerousServerConfig { disable_certificate_verification: true });
+    tls_config
+        .dangerous()
+        .set_certificate_verifier(&NO_VERIFICATION);
     let tls_server = hyper_rustls::TlsServer { cfg: Arc::new(tls_config) };
 
     let mut http_client = hyper::Client::with_connector(
