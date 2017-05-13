@@ -155,12 +155,18 @@ impl hyper::server::Handler for HttpHandler {
     }
 }
 
-fn server(domain: &str) {
+fn server(domain: &str, letsencrypt_env: &str) {
     let mut tls_config = rustls::ServerConfig::new();
     tls_config.client_auth_offer = true;
     // TODO: Add a way to not use ACME and instead generate a new self-signed cert on the fly.
+    let letsencrypt_url = match letsencrypt_env {
+        "prod" => "https://acme-v01.api.letsencrypt.org/directory",
+        "dev" => "https://acme-staging.api.letsencrypt.org/directory",
+        _ => unreachable!(),
+    };
     tls_config.cert_resolver =
-        Box::new(letsencrypt::AutomaticCertResolver::new(vec![domain.to_string()]));
+        Box::new(letsencrypt::AutomaticCertResolver::new(letsencrypt_url,
+                                                         vec![domain.to_string()]));
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
     // Disable certificate verificaion. In any normal context, this would be horribly dangerous!
@@ -212,7 +218,13 @@ fn main() {
                                  .takes_value(true)
                                  .long("--domain")
                                  .required(true)
-                                 .help("Domain this is running as")))
+                                 .help("Domain this is running as"))
+                        .arg(clap::Arg::with_name("letsencrypt-env")
+                                 .takes_value(true)
+                                 .long("--letsencrypt-env")
+                                 .required(true)
+                                 .possible_values(&["dev", "prod"])
+                                 .help("Let's Encrypt environment to use")))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("submit") {
@@ -220,6 +232,7 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches("check") {
         check(matches.values_of("path").unwrap());
     } else if let Some(matches) = matches.subcommand_matches("server") {
-        server(matches.value_of("domain").unwrap());
+        server(matches.value_of("domain").unwrap(),
+               matches.value_of("letsencrypt-env").unwrap());
     }
 }

@@ -19,10 +19,9 @@ pub struct AutomaticCertResolver {
 // TODO: Disk cache for reading/writing certs so it doesn't have to obtain a new one on process
 // startup everytime.
 impl AutomaticCertResolver {
-    pub fn new(domains: Vec<String>) -> AutomaticCertResolver {
+    pub fn new(acme_url: &str, domains: Vec<String>) -> AutomaticCertResolver {
         // TODO: configure URL
-        let acme_directory = acme_client::Directory::from_url("https://acme-staging.api.letsencrypt.org/directory",)
-            .unwrap();
+        let acme_directory = acme_client::Directory::from_url(acme_url).unwrap();
         return AutomaticCertResolver {
                    domains: domains,
                    acme_account: acme_directory.account_registration().register().unwrap(),
