@@ -21,12 +21,12 @@ pub struct AutomaticCertResolver {
 impl AutomaticCertResolver {
     pub fn new(acme_url: &str, domains: Vec<String>) -> AutomaticCertResolver {
         let acme_directory = acme_client::Directory::from_url(acme_url).unwrap();
-        return AutomaticCertResolver {
-                   domains: domains,
-                   acme_account: acme_directory.account_registration().register().unwrap(),
-                   active_cert: Mutex::new(None),
-                   sni_challenges: Mutex::new(HashMap::new()),
-               };
+        AutomaticCertResolver {
+            domains: domains,
+            acme_account: acme_directory.account_registration().register().unwrap(),
+            active_cert: Mutex::new(None),
+            sni_challenges: Mutex::new(HashMap::new()),
+        }
     }
 
     fn obtain_new_certificate(&self) {
