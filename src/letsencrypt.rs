@@ -131,12 +131,15 @@ impl rustls::ResolvesServerCert for AutomaticCertResolver {
                 return Some(cert.clone());
             }
         }
-        let mut active_cert = self.active_cert.lock().unwrap();
-        if cert_is_valid(active_cert.get_mut()) {
-            return active_cert.get_mut().clone();
+        // Seperate scope so that the lock isn't held we enter `obtain_new_certificate`.
+        {
+            let mut active_cert = self.active_cert.lock().unwrap();
+            if cert_is_valid(active_cert.get_mut()) {
+                return active_cert.get_mut().clone();
+            }
         }
         self.obtain_new_certificate();
-        return active_cert.get_mut().clone();
+        return self.active_cert.lock().unwrap().get_mut().clone();
     }
 }
 
