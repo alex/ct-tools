@@ -37,11 +37,13 @@ impl AutomaticCertResolver {
     }
 
     fn obtain_new_certificate(&self) {
+        // Can't do the smart thing of setting them all up, and then triggering the validations in
+        // parallel and waiting for the results because acme-client doesn't expose seperate
+        // "trigger validation" and "wait for success" functions.
         for domain in self.domains.iter() {
             let authorization = self.acme_account.authorization(&domain).unwrap();
             let tls_sni_challenge = authorization.get_tls_sni_challenge().unwrap();
             self.setup_sni_challenge(tls_sni_challenge);
-            // TODO: set up all the challenges, then validate them all in parallel
             tls_sni_challenge.validate().unwrap();
             self.teardown_sni_challenge(tls_sni_challenge);
         }
@@ -95,7 +97,7 @@ fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::pkey:
     san.dns(domain);
     let san_ext = san.build(&cert_builder.x509v3_context(None, None))
         .unwrap();
-    cert_builder.append_extension(san_ext);
+    cert_builder.append_extension(san_ext).unwrap();
 
     cert_builder
         .sign(&pkey, openssl::hash::MessageDigest::sha256())
