@@ -55,9 +55,9 @@ impl CertificateCache for DiskCache {
         match (File::open(self.chain_path(identifier)), File::open(self.key_path(identifier))) {
             (Ok(mut chain_file), Ok(mut key_file)) => {
                 let mut chain_pem = String::new();
-                chain_file.read_to_string(&mut chain_pem);
+                chain_file.read_to_string(&mut chain_pem).unwrap();
                 let mut key_pem = String::new();
-                key_file.read_to_string(&mut key_pem);
+                key_file.read_to_string(&mut key_pem).unwrap();
                 Some((chain_pem, key_pem))
             }
             _ => None,
