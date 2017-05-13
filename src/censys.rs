@@ -1,9 +1,8 @@
-use std::collections::HashMap;
+use super::common::sha256_hex;
 
 use hyper;
 use serde_json;
-
-use super::common::sha256_hex;
+use std::collections::HashMap;
 
 
 const CENSYS_USER: &'static str = "57ece743-1f12-42a0-9dc6-51811cf4be65";
@@ -20,7 +19,7 @@ struct CensysViewCertificateResponse {
 pub fn is_cert_logged(http_client: &hyper::Client, cert: &[u8]) -> bool {
     let response = http_client
         .get(&format!("https://censys.io/api/v1/view/certificates/{}",
-                      sha256_hex(cert)))
+                     sha256_hex(cert)))
         .header(hyper::header::Authorization(hyper::header::Basic {
                                                  username: CENSYS_USER.to_string(),
                                                  password: Some(CENSYS_PASSWORD.to_string()),

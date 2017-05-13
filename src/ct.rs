@@ -1,12 +1,11 @@
-use std::io::{Read, Write};
+use super::common::Log;
 
 use base64;
-use hyper;
-use serde_json;
 use byteorder::{BigEndian, WriteBytesExt};
+use hyper;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-
-use super::common::Log;
+use serde_json;
+use std::io::{Read, Write};
 
 
 #[derive(Debug, Deserialize)]
@@ -30,8 +29,7 @@ impl SignedCertificateTimestamp {
 
         let extensions = base64::decode(&self.extensions).unwrap();
         assert!(extensions.len() <= 65535);
-        b.write_u16::<BigEndian>(extensions.len() as u16)
-            .unwrap();
+        b.write_u16::<BigEndian>(extensions.len() as u16).unwrap();
         b.write(&extensions).unwrap();
 
         let signature = base64::decode(&self.signature).unwrap();
@@ -83,8 +81,8 @@ pub fn submit_cert_to_logs<'a>(http_client: &hyper::Client,
                                cert: &[Vec<u8>])
                                -> Vec<(&'a Log, SignedCertificateTimestamp)> {
     let payload = serde_json::to_vec(&AddChainRequest {
-                                          chain: cert.iter().map(|r| base64::encode(r)).collect(),
-                                      })
+                                         chain: cert.iter().map(|r| base64::encode(r)).collect(),
+                                     })
             .unwrap();
 
     return logs.par_iter()

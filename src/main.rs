@@ -9,12 +9,12 @@ extern crate serde_json;
 
 extern crate ct_tools;
 
-use std::fs::File;
-use std::io::Read;
 
 use ct_tools::{censys, crtsh};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
+use std::fs::File;
+use std::io::Read;
 
 
 fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {

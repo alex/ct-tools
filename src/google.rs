@@ -1,9 +1,8 @@
-use std::io::Read;
+use super::common::Log;
 
 use hyper;
 use serde_json;
-
-use super::common::Log;
+use std::io::Read;
 
 
 const LOG_LIST_URL: &'static str = "https://www.gstatic.com/ct/log_list/log_list.json";

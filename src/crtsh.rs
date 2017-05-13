@@ -1,11 +1,9 @@
+use super::common::sha256_hex;
+use super::ct::AddChainRequest;
 use base64;
 use hyper;
 use serde_json;
 use url;
-
-use super::common::sha256_hex;
-use super::ct::AddChainRequest;
-
 
 pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec<u8>> {
     let body = url::form_urlencoded::Serializer::new(String::new())
