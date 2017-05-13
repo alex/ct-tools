@@ -146,6 +146,7 @@ impl rustls::ResolvesServerCert for AutomaticCertResolver {
         {
             let active_cert = self.active_cert.lock().unwrap();
             if cert_is_valid(&active_cert) {
+                // TODO: if it's _close_ to expiring, trigger a background "obtain new cert"
                 return active_cert.clone();
             }
         }
