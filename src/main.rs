@@ -187,7 +187,8 @@ fn server(domain: &str) {
     println!("Listening on https://{} ...", addr);
     hyper::Server::https(addr, tls_server)
         .unwrap()
-        .handle(handler)
+        // If there aren't at least two threads, the Let's Encrypt integration will deadlock.
+        .handle_threads(handler, 16)
         .unwrap();
 }
 
