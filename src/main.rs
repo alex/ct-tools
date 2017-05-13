@@ -14,10 +14,11 @@ extern crate tera;
 
 extern crate ct_tools;
 
-use ct_tools::{censys, crtsh};
+use ct_tools::{censys, crtsh, letsencrypt};
 use ct_tools::common::{Log, sha256_hex};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
+use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::process::Command;
@@ -111,13 +112,8 @@ impl hyper::server::Handler for HttpHandler {
 
         let mut crtsh_url = None;
         if peer_certs.is_some() && request.method == hyper::method::Method::Post {
-            // TODO: is this chain complete, or do we need to `build_chain_for_cert`
-            let chain = peer_certs
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(|c| c.0.to_vec())
-                .collect::<Vec<_>>();
+            let chain = crtsh::build_chain_for_cert(&self.http_client,
+                                                    &peer_certs.as_ref().unwrap()[0].0);
             let scts = submit_cert_to_logs(&self.http_client, &self.logs, &chain);
             if !scts.is_empty() {
                 crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
@@ -155,11 +151,42 @@ impl hyper::server::Handler for HttpHandler {
     }
 }
 
-fn server(private_key_path: &str, certificate_path: &str) {
+fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) {
+    match (local_dev, domain, letsencrypt_env) {
+        (true, Some(_), _) |
+        (true, _, Some(_)) => {
+            panic!("Can't use both --local-dev and --letsencrypt-env or --domain")
+        }
+        (_, Some(_), None) |
+        (_, None, Some(_)) => {
+            panic!("When using Let's Encrypt, must set both --letsencrypt-env and --domain")
+        }
+        (false, _, None) => panic!("Must set at least one of --local-dev or --letsencrypt-env"),
+        _ => {}
+    };
+
     let mut tls_config = rustls::ServerConfig::new();
     tls_config.client_auth_offer = true;
-    tls_config.set_single_cert(hyper_rustls::util::load_certs(certificate_path).unwrap(),
-                               hyper_rustls::util::load_private_key(private_key_path).unwrap());
+    if local_dev {
+        // TODO: not all the details on the cert are perfect, but it's fine.
+        let (cert, pkey) = letsencrypt::generate_temporary_cert("localhost");
+        tls_config.set_single_cert(vec![letsencrypt::openssl_cert_to_rustls(&cert)],
+                                   letsencrypt::openssl_pkey_to_rustls(&pkey));
+    } else {
+        let letsencrypt_url = match letsencrypt_env.unwrap() {
+            "prod" => "https://acme-v01.api.letsencrypt.org/directory",
+            "dev" => "https://acme-staging.api.letsencrypt.org/directory",
+            _ => unreachable!(),
+        };
+        let cert_cache = letsencrypt::DiskCache::new(env::home_dir()
+                                                         .unwrap()
+                                                         .join(".ct-tools")
+                                                         .join("certificates"));
+        tls_config.cert_resolver =
+            Box::new(letsencrypt::AutomaticCertResolver::new(letsencrypt_url,
+                                                             vec![domain.unwrap().to_string()],
+                                                             cert_cache));
+    }
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
     // Disable certificate verificaion. In any normal context, this would be horribly dangerous!
@@ -181,11 +208,16 @@ fn server(private_key_path: &str, certificate_path: &str) {
         logs: logs,
     };
 
-    let addr = "127.0.0.1:1337";
+    let addr = if local_dev {
+        "127.0.0.1:1337"
+    } else {
+        "0.0.0.0:443"
+    };
     println!("Listening on https://{} ...", addr);
     hyper::Server::https(addr, tls_server)
         .unwrap()
-        .handle(handler)
+        // If there aren't at least two threads, the Let's Encrypt integration will deadlock.
+        .handle_threads(handler, 16)
         .unwrap();
 }
 
@@ -205,16 +237,18 @@ fn main() {
                                  .help("Path to certificate or chain")))
         .subcommand(clap::SubCommand::with_name("server")
                         .about("Run an HTTPS server that submits client to CT logs")
-                        .arg(clap::Arg::with_name("private-key")
+                        .arg(clap::Arg::with_name("local-dev")
+                                 .long("--local-dev")
+                                 .help("Local development, do not obtain a certificate"))
+                        .arg(clap::Arg::with_name("domain")
                                  .takes_value(true)
-                                 .long("--private-key")
-                                 .required(true)
-                                 .help("Path to private key for the server"))
-                        .arg(clap::Arg::with_name("certificate")
+                                 .long("--domain")
+                                 .help("Domain this is running as"))
+                        .arg(clap::Arg::with_name("letsencrypt-env")
                                  .takes_value(true)
-                                 .long("--certificate")
-                                 .required(true)
-                                 .help("Path to certificate for the server")))
+                                 .long("--letsencrypt-env")
+                                 .possible_values(&["dev", "prod"])
+                                 .help("Let's Encrypt environment to use")))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("submit") {
@@ -222,7 +256,8 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches("check") {
         check(matches.values_of("path").unwrap());
     } else if let Some(matches) = matches.subcommand_matches("server") {
-        server(matches.value_of("private-key").unwrap(),
-               matches.value_of("certificate").unwrap());
+        server(matches.is_present("local-dev"),
+               matches.value_of("domain"),
+               matches.value_of("letsencrypt-env"));
     }
 }
