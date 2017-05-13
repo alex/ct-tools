@@ -1,4 +1,3 @@
-use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -13,7 +12,7 @@ use super::common::sha256_hex;
 pub struct AutomaticCertResolver {
     domains: Vec<String>,
     acme_account: acme_client::Account,
-    active_cert: Mutex<Cell<Option<rustls::sign::CertChainAndSigner>>>,
+    active_cert: Mutex<Option<rustls::sign::CertChainAndSigner>>,
     sni_challenges: Mutex<HashMap<String, rustls::sign::CertChainAndSigner>>,
 }
 
@@ -31,7 +30,7 @@ impl AutomaticCertResolver {
                        .account_registration()
                        .register()
                        .unwrap(),
-                   active_cert: Mutex::new(Cell::new(None)),
+                   active_cert: Mutex::new(None),
                    sni_challenges: Mutex::new(HashMap::new()),
                };
     }
@@ -57,10 +56,7 @@ impl AutomaticCertResolver {
         // TODO: intermediates
         let chain = vec![openssl_cert_to_rustls(cert.cert())];
         let signer = openssl_pkey_to_rustls(cert.pkey());
-        self.active_cert
-            .lock()
-            .unwrap()
-            .replace(Some((chain, Arc::new(signer))));
+        *self.active_cert.lock().unwrap() = Some((chain, Arc::new(signer)));
     }
 
     fn setup_sni_challenge(&self, challenge: &acme_client::Challenge) {
@@ -134,12 +130,12 @@ impl rustls::ResolvesServerCert for AutomaticCertResolver {
         // Seperate scope so that the lock isn't held we enter `obtain_new_certificate`.
         {
             let mut active_cert = self.active_cert.lock().unwrap();
-            if cert_is_valid(active_cert.get_mut()) {
-                return active_cert.get_mut().clone();
+            if cert_is_valid(&active_cert) {
+                return active_cert.clone();
             }
         }
         self.obtain_new_certificate();
-        return self.active_cert.lock().unwrap().get_mut().clone();
+        return self.active_cert.lock().unwrap().clone();
     }
 }
 
