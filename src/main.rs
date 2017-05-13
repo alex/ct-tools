@@ -156,11 +156,12 @@ impl hyper::server::Handler for HttpHandler {
     }
 }
 
-fn server(private_key_path: &str, certificate_path: &str) {
+fn server(domain: &str) {
     let mut tls_config = rustls::ServerConfig::new();
     tls_config.client_auth_offer = true;
+    // TODO: Add a way to not use ACME and instead generate a new self-signed cert on the fly.
     tls_config.cert_resolver =
-        Box::new(letsencrypt::AutomaticCertResolver::new(vec!["localhost".to_string()]));
+        Box::new(letsencrypt::AutomaticCertResolver::new(vec![domain.to_string()]));
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
     // Disable certificate verificaion. In any normal context, this would be horribly dangerous!
@@ -206,16 +207,11 @@ fn main() {
                                  .help("Path to certificate or chain")))
         .subcommand(clap::SubCommand::with_name("server")
                         .about("Run an HTTPS server that submits client to CT logs")
-                        .arg(clap::Arg::with_name("private-key")
+                        .arg(clap::Arg::with_name("domain")
                                  .takes_value(true)
-                                 .long("--private-key")
+                                 .long("--domain")
                                  .required(true)
-                                 .help("Path to private key for the server"))
-                        .arg(clap::Arg::with_name("certificate")
-                                 .takes_value(true)
-                                 .long("--certificate")
-                                 .required(true)
-                                 .help("Path to certificate for the server")))
+                                 .help("Domain this is running as")))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("submit") {
@@ -223,7 +219,6 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches("check") {
         check(matches.values_of("path").unwrap());
     } else if let Some(matches) = matches.subcommand_matches("server") {
-        server(matches.value_of("private-key").unwrap(),
-               matches.value_of("certificate").unwrap());
+        server(matches.value_of("domain").unwrap());
     }
 }
