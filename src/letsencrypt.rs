@@ -33,8 +33,8 @@ impl AutomaticCertResolver {
         // Can't do the smart thing of setting them all up, and then triggering the validations in
         // parallel and waiting for the results because acme-client doesn't expose seperate
         // "trigger validation" and "wait for success" functions.
-        for domain in self.domains.iter() {
-            let authorization = self.acme_account.authorization(&domain).unwrap();
+        for domain in &self.domains {
+            let authorization = self.acme_account.authorization(domain).unwrap();
             let tls_sni_challenge = authorization.get_tls_sni_challenge().unwrap();
             self.setup_sni_challenge(tls_sni_challenge);
             tls_sni_challenge.validate().unwrap();
@@ -148,9 +148,9 @@ impl rustls::ResolvesServerCert for AutomaticCertResolver {
 }
 
 fn cert_is_valid(cert: &Option<rustls::sign::CertChainAndSigner>) -> bool {
-    match cert {
-        &Some((ref chain, _)) => !cert_is_expired(&chain[0]),
-        &None => false,
+    match *cert {
+        Some((ref chain, _)) => !cert_is_expired(&chain[0]),
+        None => false,
     }
 }
 
