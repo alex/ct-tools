@@ -155,18 +155,37 @@ impl hyper::server::Handler for HttpHandler {
     }
 }
 
-fn server(domain: &str, letsencrypt_env: &str) {
+fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) {
+    match (local_dev, domain, letsencrypt_env) {
+        (true, Some(_), _) |
+        (true, _, Some(_)) => {
+            panic!("Can't use both --local-dev and --letsencrypt-env or --domain")
+        }
+        (_, Some(_), None) |
+        (_, None, Some(_)) => {
+            panic!("When using Let's Encrypt, must set both --letsencrypt-env and --domain")
+        }
+        (false, _, None) => panic!("Must set at least one of --local-dev or --letsencrypt-env"),
+        _ => {}
+    };
+
     let mut tls_config = rustls::ServerConfig::new();
     tls_config.client_auth_offer = true;
-    // TODO: Add a way to not use ACME and instead generate a new self-signed cert on the fly.
-    let letsencrypt_url = match letsencrypt_env {
-        "prod" => "https://acme-v01.api.letsencrypt.org/directory",
-        "dev" => "https://acme-staging.api.letsencrypt.org/directory",
-        _ => unreachable!(),
-    };
-    tls_config.cert_resolver =
-        Box::new(letsencrypt::AutomaticCertResolver::new(letsencrypt_url,
-                                                         vec![domain.to_string()]));
+    if local_dev {
+        // TODO: not all the details on the cert are perfect, but it's fine.
+        let (cert, pkey) = letsencrypt::generate_temporary_cert("localhost");
+        tls_config.set_single_cert(vec![letsencrypt::openssl_cert_to_rustls(&cert)],
+                                   letsencrypt::openssl_pkey_to_rustls(&pkey));
+    } else {
+        let letsencrypt_url = match letsencrypt_env.unwrap() {
+            "prod" => "https://acme-v01.api.letsencrypt.org/directory",
+            "dev" => "https://acme-staging.api.letsencrypt.org/directory",
+            _ => unreachable!(),
+        };
+        tls_config.cert_resolver =
+            Box::new(letsencrypt::AutomaticCertResolver::new(letsencrypt_url,
+                                                             vec![domain.unwrap().to_string()]));
+    }
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
     // Disable certificate verificaion. In any normal context, this would be horribly dangerous!
@@ -188,8 +207,10 @@ fn server(domain: &str, letsencrypt_env: &str) {
         logs: logs,
     };
 
-    // TODO: controllable listening address
-    let addr = "0.0.0.0:443";
+    let addr = match local_dev {
+        true => "127.0.0.1:1337",
+        false => "0.0.0.0:443",
+    };
     println!("Listening on https://{} ...", addr);
     hyper::Server::https(addr, tls_server)
         .unwrap()
@@ -214,15 +235,16 @@ fn main() {
                                  .help("Path to certificate or chain")))
         .subcommand(clap::SubCommand::with_name("server")
                         .about("Run an HTTPS server that submits client to CT logs")
+                        .arg(clap::Arg::with_name("local-dev")
+                                 .long("--local-dev")
+                                 .help("Local development, do not obtain a certificate"))
                         .arg(clap::Arg::with_name("domain")
                                  .takes_value(true)
                                  .long("--domain")
-                                 .required(true)
                                  .help("Domain this is running as"))
                         .arg(clap::Arg::with_name("letsencrypt-env")
                                  .takes_value(true)
                                  .long("--letsencrypt-env")
-                                 .required(true)
                                  .possible_values(&["dev", "prod"])
                                  .help("Let's Encrypt environment to use")))
         .get_matches();
@@ -232,7 +254,8 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches("check") {
         check(matches.values_of("path").unwrap());
     } else if let Some(matches) = matches.subcommand_matches("server") {
-        server(matches.value_of("domain").unwrap(),
-               matches.value_of("letsencrypt-env").unwrap());
+        server(matches.is_present("local-dev"),
+               matches.value_of("domain"),
+               matches.value_of("letsencrypt-env"));
     }
 }

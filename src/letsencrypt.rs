@@ -49,7 +49,7 @@ impl AutomaticCertResolver {
             .unwrap();
         // TODO: intermediates
         let chain = vec![openssl_cert_to_rustls(cert.cert())];
-        let signer = openssl_pkey_to_rustls(cert.pkey());
+        let signer = openssl_pkey_to_rustls_signer(cert.pkey());
         *self.active_cert.lock().unwrap() = Some((chain, Arc::new(signer)));
     }
 
@@ -58,7 +58,7 @@ impl AutomaticCertResolver {
         let (cert, pkey) = generate_temporary_cert(&z_domain);
 
         let chain = vec![openssl_cert_to_rustls(&cert)];
-        let signer = openssl_pkey_to_rustls(&pkey);
+        let signer = openssl_pkey_to_rustls_signer(&pkey);
         self.sni_challenges
             .lock()
             .unwrap()
@@ -77,15 +77,19 @@ fn z_domain(challenge: &acme_client::Challenge) -> String {
     return format!("{}.{}.acme.invalid", z1, z2);
 }
 
-fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::pkey::PKey) {
+pub fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::pkey::PKey) {
     let pkey = openssl::pkey::PKey::from_rsa(openssl::rsa::Rsa::generate(2048).unwrap()).unwrap();
     let mut cert_builder = openssl::x509::X509Builder::new().unwrap();
     cert_builder.set_version(2).unwrap();
     cert_builder.set_pubkey(&pkey).unwrap();
 
     let mut serial = openssl::bn::BigNum::new().unwrap();
-    serial.rand(128, openssl::bn::MSB_MAYBE_ZERO, false).unwrap();
-    cert_builder.set_serial_number(&serial.to_asn1_integer().unwrap()).unwrap();
+    serial
+        .rand(128, openssl::bn::MSB_MAYBE_ZERO, false)
+        .unwrap();
+    cert_builder
+        .set_serial_number(&serial.to_asn1_integer().unwrap())
+        .unwrap();
 
     let mut subject_builder = openssl::x509::X509NameBuilder::new().unwrap();
     subject_builder
@@ -114,17 +118,17 @@ fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::pkey:
     (cert_builder.build(), pkey)
 }
 
-fn openssl_cert_to_rustls(cert: &openssl::x509::X509) -> rustls::Certificate {
+pub fn openssl_cert_to_rustls(cert: &openssl::x509::X509) -> rustls::Certificate {
     rustls::Certificate(cert.to_der().unwrap())
 }
 
-fn openssl_pkey_to_rustls(pkey: &openssl::pkey::PKey) -> Box<rustls::sign::Signer> {
+pub fn openssl_pkey_to_rustls(pkey: &openssl::pkey::PKey) -> rustls::PrivateKey {
+    rustls::PrivateKey(pkey.rsa().unwrap().private_key_to_der().unwrap())
+}
+
+fn openssl_pkey_to_rustls_signer(pkey: &openssl::pkey::PKey) -> Box<rustls::sign::Signer> {
     // TODO: ECDSA
-    Box::new(rustls::sign::RSASigner::new(&rustls::PrivateKey(pkey.rsa()
-                                                                  .unwrap()
-                                                                  .private_key_to_der()
-                                                                  .unwrap()))
-                     .unwrap())
+    Box::new(rustls::sign::RSASigner::new(&openssl_pkey_to_rustls(pkey)).unwrap())
 }
 
 impl rustls::ResolvesServerCert for AutomaticCertResolver {
