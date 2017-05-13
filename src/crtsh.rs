@@ -18,13 +18,13 @@ pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec
         .unwrap();
 
     let add_chain_request: AddChainRequest = serde_json::from_reader(response).unwrap();
-    return add_chain_request
-               .chain
-               .iter()
-               .map(|c| base64::decode(c).unwrap())
-               .collect();
+    add_chain_request
+        .chain
+        .iter()
+        .map(|c| base64::decode(c).unwrap())
+        .collect()
 }
 
 pub fn url_for_cert(cert: &[u8]) -> String {
-    return format!("https://crt.sh?q={}", sha256_hex(cert).to_uppercase());
+    format!("https://crt.sh?q={}", sha256_hex(cert).to_uppercase())
 }

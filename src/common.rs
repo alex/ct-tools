@@ -11,5 +11,5 @@ pub struct Log {
 }
 
 pub fn sha256_hex(data: &[u8]) -> String {
-    return digest::digest(&digest::SHA256, &data).as_ref().to_hex();
+    digest::digest(&digest::SHA256, data).as_ref().to_hex()
 }

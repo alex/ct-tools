@@ -23,19 +23,19 @@ impl SignedCertificateTimestamp {
         b.write_u8(self.sct_version).unwrap();
 
         let log_id = base64::decode(&self.id).unwrap();
-        b.write(&log_id).unwrap();
+        b.write_all(&log_id).unwrap();
 
         b.write_u64::<BigEndian>(self.timestamp).unwrap();
 
         let extensions = base64::decode(&self.extensions).unwrap();
         assert!(extensions.len() <= 65535);
         b.write_u16::<BigEndian>(extensions.len() as u16).unwrap();
-        b.write(&extensions).unwrap();
+        b.write_all(&extensions).unwrap();
 
         let signature = base64::decode(&self.signature).unwrap();
-        b.write(&signature).unwrap();
+        b.write_all(&signature).unwrap();
 
-        return b;
+        b
     }
 }
 
@@ -45,7 +45,7 @@ fn submit_to_log(http_client: &hyper::Client,
                  payload: &[u8])
                  -> Option<SignedCertificateTimestamp> {
     let mut url = "https://".to_string() + url;
-    if !url.ends_with("/") {
+    if !url.ends_with('/') {
         url += "/";
     }
     url += "ct/v1/add-chain";
@@ -68,7 +68,7 @@ fn submit_to_log(http_client: &hyper::Client,
 
     // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS in
     // the face of a dumb or malicious log.
-    return Some(serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap());
+    Some(serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap())
 }
 
 #[derive(Serialize, Deserialize)]
@@ -85,10 +85,10 @@ pub fn submit_cert_to_logs<'a>(http_client: &hyper::Client,
                                      })
             .unwrap();
 
-    return logs.par_iter()
-               .filter_map(|log| {
-                               let sct = submit_to_log(http_client, &log.url, &payload);
-                               return sct.map(|s| (log, s));
-                           })
-               .collect();
+    logs.par_iter()
+        .filter_map(|log| {
+                        let sct = submit_to_log(http_client, &log.url, &payload);
+                        sct.map(|s| (log, s))
+                    })
+        .collect()
 }

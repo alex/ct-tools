@@ -38,16 +38,16 @@ pub fn fetch_trusted_ct_logs(http_client: &hyper::Client) -> Vec<Log> {
         .find(|o| o.name == "Google")
         .map(|o| o.id);
 
-    return logs_response
-               .logs
-               .into_iter()
-               .filter(|log| log.disqualified_at.is_none())
-               .map(|log| {
-                        Log {
-                            url: log.url,
-                            description: log.description,
-                            is_google: log.operated_by.contains(&google_id.unwrap()),
-                        }
-                    })
-               .collect();
+    logs_response
+        .logs
+        .into_iter()
+        .filter(|log| log.disqualified_at.is_none())
+        .map(|log| {
+                 Log {
+                     url: log.url,
+                     description: log.description,
+                     is_google: log.operated_by.contains(&google_id.unwrap()),
+                 }
+             })
+        .collect()
 }

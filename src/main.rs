@@ -18,11 +18,11 @@ use std::io::Read;
 
 
 fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {
-    return pem::parse_many(data)
-               .into_iter()
-               .filter(|p| p.tag == "CERTIFICATE")
-               .map(|p| p.contents)
-               .collect();
+    pem::parse_many(data)
+        .into_iter()
+        .filter(|p| p.tag == "CERTIFICATE")
+        .map(|p| p.contents)
+        .collect()
 }
 
 fn submit(paths: clap::Values) {

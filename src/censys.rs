@@ -35,8 +35,8 @@ pub fn is_cert_logged(http_client: &hyper::Client, cert: &[u8]) -> bool {
 
     let certificate_details: CensysViewCertificateResponse = serde_json::from_reader(response)
         .unwrap();
-    return match certificate_details.ct {
-               Some(ct) => !ct.is_empty(),
-               None => false,
-           };
+    match certificate_details.ct {
+        Some(ct) => !ct.is_empty(),
+        None => false,
+    }
 }
