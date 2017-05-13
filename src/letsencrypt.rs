@@ -1,5 +1,3 @@
-
-
 use super::common::sha256_hex;
 
 use acme_client;
