@@ -15,7 +15,7 @@ extern crate tera;
 extern crate ct_tools;
 
 use ct_tools::{censys, crtsh};
-use ct_tools::common::{sha256_hex, Log};
+use ct_tools::common::{Log, sha256_hex};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
 use std::fs::File;
