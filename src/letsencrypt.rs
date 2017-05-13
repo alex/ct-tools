@@ -20,7 +20,6 @@ pub struct AutomaticCertResolver {
 // startup everytime.
 impl AutomaticCertResolver {
     pub fn new(acme_url: &str, domains: Vec<String>) -> AutomaticCertResolver {
-        // TODO: configure URL
         let acme_directory = acme_client::Directory::from_url(acme_url).unwrap();
         return AutomaticCertResolver {
                    domains: domains,
