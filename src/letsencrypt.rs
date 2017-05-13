@@ -143,6 +143,7 @@ impl rustls::ResolvesServerCert for AutomaticCertResolver {
                 return active_cert.clone();
             }
         }
+        // TODO: Don't try to obtain a new cert if we're currently waiting for one already...
         self.obtain_new_certificate();
         return self.active_cert.lock().unwrap().clone();
     }
