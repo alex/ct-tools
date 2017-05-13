@@ -151,7 +151,7 @@ impl rustls::ResolvesServerCert for AutomaticCertResolver {
 
 fn cert_is_valid(cert: &Option<rustls::sign::CertChainAndSigner>) -> bool {
     return match cert {
-               &Some((ref chain, _)) => cert_is_expired(&chain[0]),
+               &Some((ref chain, _)) => !cert_is_expired(&chain[0]),
                &None => false,
            };
 }
