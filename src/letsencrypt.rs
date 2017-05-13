@@ -21,14 +21,11 @@ pub struct AutomaticCertResolver {
 impl AutomaticCertResolver {
     pub fn new(domains: Vec<String>) -> AutomaticCertResolver {
         // TODO: configure URL
-        let acme_directory = acme_client::Directory::from_url("https://acme-staging.api.letsencrypt.org/directory")
+        let acme_directory = acme_client::Directory::from_url("https://acme-staging.api.letsencrypt.org/directory",)
             .unwrap();
         return AutomaticCertResolver {
                    domains: domains,
-                   acme_account: acme_directory
-                       .account_registration()
-                       .register()
-                       .unwrap(),
+                   acme_account: acme_directory.account_registration().register().unwrap(),
                    active_cert: Mutex::new(None),
                    sni_challenges: Mutex::new(HashMap::new()),
                };
@@ -105,8 +102,7 @@ fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::pkey:
 
     let mut san = openssl::x509::extension::SubjectAlternativeName::new();
     san.dns(domain);
-    let san_ext = san.build(&cert_builder.x509v3_context(None, None))
-        .unwrap();
+    let san_ext = san.build(&cert_builder.x509v3_context(None, None)).unwrap();
     cert_builder.append_extension(san_ext).unwrap();
 
     cert_builder
@@ -122,12 +118,11 @@ fn openssl_cert_to_rustls(cert: &openssl::x509::X509) -> rustls::Certificate {
 
 fn openssl_pkey_to_rustls(pkey: &openssl::pkey::PKey) -> Box<rustls::sign::Signer> {
     // TODO: ECDSA
-    Box::new(rustls::sign::RSASigner::new(&rustls::PrivateKey(pkey
-                                                         .rsa()
-                                                         .unwrap()
-                                                         .private_key_to_der()
-                                                         .unwrap()))
-            .unwrap())
+    Box::new(rustls::sign::RSASigner::new(&rustls::PrivateKey(pkey.rsa()
+                                                                  .unwrap()
+                                                                  .private_key_to_der()
+                                                                  .unwrap()))
+                     .unwrap())
 }
 
 impl rustls::ResolvesServerCert for AutomaticCertResolver {
