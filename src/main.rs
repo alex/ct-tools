@@ -207,9 +207,10 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         logs: logs,
     };
 
-    let addr = match local_dev {
-        true => "127.0.0.1:1337",
-        false => "0.0.0.0:443",
+    let addr = if local_dev {
+        "127.0.0.1:1337"
+    } else {
+        "0.0.0.0:443"
     };
     println!("Listening on https://{} ...", addr);
     hyper::Server::https(addr, tls_server)
