@@ -95,6 +95,9 @@ fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::pkey:
     cert_builder.set_subject_name(&subject).unwrap();
     cert_builder.set_issuer_name(&subject).unwrap();
 
+    cert_builder.set_not_before(&openssl::asn1::Asn1Time::days_from_now(0).unwrap()).unwrap();
+    cert_builder.set_not_after(&openssl::asn1::Asn1Time::days_from_now(1).unwrap()).unwrap();
+
     let mut san = openssl::x509::extension::SubjectAlternativeName::new();
     san.dns(domain);
     let san_ext = san.build(&cert_builder.x509v3_context(None, None))
