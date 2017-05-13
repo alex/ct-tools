@@ -1,12 +1,13 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+
+
+use super::common::sha256_hex;
 
 use acme_client;
 use chrono;
 use openssl;
 use rustls;
-
-use super::common::sha256_hex;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 
 pub struct AutomaticCertResolver {
@@ -90,13 +91,19 @@ fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::pkey:
     cert_builder.set_pubkey(&pkey).unwrap();
 
     let mut subject_builder = openssl::x509::X509NameBuilder::new().unwrap();
-    subject_builder.append_entry_by_text("CN", "ACME SNI Challenge Certificate").unwrap();
+    subject_builder
+        .append_entry_by_text("CN", "ACME SNI Challenge Certificate")
+        .unwrap();
     let subject = subject_builder.build();
     cert_builder.set_subject_name(&subject).unwrap();
     cert_builder.set_issuer_name(&subject).unwrap();
 
-    cert_builder.set_not_before(&openssl::asn1::Asn1Time::days_from_now(0).unwrap()).unwrap();
-    cert_builder.set_not_after(&openssl::asn1::Asn1Time::days_from_now(1).unwrap()).unwrap();
+    cert_builder
+        .set_not_before(&openssl::asn1::Asn1Time::days_from_now(0).unwrap())
+        .unwrap();
+    cert_builder
+        .set_not_after(&openssl::asn1::Asn1Time::days_from_now(1).unwrap())
+        .unwrap();
 
     let mut san = openssl::x509::extension::SubjectAlternativeName::new();
     san.dns(domain);
