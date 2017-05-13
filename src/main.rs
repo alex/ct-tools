@@ -112,13 +112,8 @@ impl hyper::server::Handler for HttpHandler {
 
         let mut crtsh_url = None;
         if peer_certs.is_some() && request.method == hyper::method::Method::Post {
-            // TODO: is this chain complete, or do we need to `build_chain_for_cert`
-            let chain = peer_certs
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(|c| c.0.to_vec())
-                .collect::<Vec<_>>();
+            let chain = crtsh::build_chain_for_cert(&self.http_client,
+                                                    &peer_certs.as_ref().unwrap()[0].0);
             let scts = submit_cert_to_logs(&self.http_client, &self.logs, &chain);
             if !scts.is_empty() {
                 crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
