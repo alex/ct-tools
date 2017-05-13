@@ -113,21 +113,21 @@ fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::pkey:
         .sign(&pkey, openssl::hash::MessageDigest::sha256())
         .unwrap();
 
-    return (cert_builder.build(), pkey);
+    (cert_builder.build(), pkey)
 }
 
 fn openssl_cert_to_rustls(cert: &openssl::x509::X509) -> rustls::Certificate {
-    return rustls::Certificate(cert.to_der().unwrap());
+    rustls::Certificate(cert.to_der().unwrap())
 }
 
 fn openssl_pkey_to_rustls(pkey: &openssl::pkey::PKey) -> Box<rustls::sign::Signer> {
     // TODO: ECDSA
-    return Box::new(rustls::sign::RSASigner::new(&rustls::PrivateKey(pkey
+    Box::new(rustls::sign::RSASigner::new(&rustls::PrivateKey(pkey
                                                          .rsa()
                                                          .unwrap()
                                                          .private_key_to_der()
                                                          .unwrap()))
-            .unwrap());
+            .unwrap())
 }
 
 impl rustls::ResolvesServerCert for AutomaticCertResolver {
@@ -150,20 +150,20 @@ impl rustls::ResolvesServerCert for AutomaticCertResolver {
         }
         // TODO: Don't try to obtain a new cert if we're currently waiting for one already...
         self.obtain_new_certificate();
-        return self.active_cert.lock().unwrap().clone();
+        self.active_cert.lock().unwrap().clone()
     }
 }
 
 fn cert_is_valid(cert: &Option<rustls::sign::CertChainAndSigner>) -> bool {
-    return match cert {
-               &Some((ref chain, _)) => !cert_is_expired(&chain[0]),
-               &None => false,
-           };
+    match cert {
+        &Some((ref chain, _)) => !cert_is_expired(&chain[0]),
+        &None => false,
+    }
 }
 
 fn cert_is_expired(cert: &rustls::Certificate) -> bool {
     let openssl_cert = openssl::x509::X509::from_der(&cert.0).unwrap();
-    return from_asn1_time(openssl_cert.not_after()) < chrono::UTC::now();
+    from_asn1_time(openssl_cert.not_after()) < chrono::UTC::now()
 }
 
 
@@ -171,5 +171,5 @@ fn from_asn1_time(t: &openssl::asn1::Asn1TimeRef) -> chrono::DateTime<chrono::UT
     let dt = chrono::DateTime::parse_from_str(&t.to_string().replace(" GMT", " +00:00"),
                                               "%b %e %T %Y %z")
             .unwrap();
-    return chrono::DateTime::<chrono::UTC>::from_utc(dt.naive_utc(), chrono::UTC);
+    chrono::DateTime::<chrono::UTC>::from_utc(dt.naive_utc(), chrono::UTC)
 }
