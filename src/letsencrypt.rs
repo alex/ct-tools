@@ -4,27 +4,92 @@ use acme_client;
 use chrono;
 use openssl;
 use rustls;
+use std;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::{Cursor, Read, Write};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 
-pub struct AutomaticCertResolver {
+pub trait CertificateCache: Send + Sync {
+    fn store_certificate(&self, identifier: &str, chain: &str, private_key: &str);
+    fn fetch_certificate(&self, identifier: &str) -> Option<(String, String)>;
+}
+
+fn domains_to_identifier(domains: &[String]) -> String {
+    sha256_hex(domains.join("|").as_bytes())
+}
+
+pub struct DiskCache {
+    location: PathBuf,
+}
+
+impl DiskCache {
+    pub fn new(location: PathBuf) -> DiskCache {
+        DiskCache { location: location }
+    }
+
+    fn chain_path(&self, identifier: &str) -> PathBuf {
+        self.location.join(identifier.to_string() + ".chain.pem")
+    }
+
+    fn key_path(&self, identifier: &str) -> PathBuf {
+        self.location.join(identifier.to_string() + ".key.pem")
+    }
+}
+
+impl CertificateCache for DiskCache {
+    fn store_certificate(&self, identifier: &str, chain: &str, private_key: &str) {
+        File::create(self.chain_path(identifier))
+            .unwrap()
+            .write_all(chain.as_bytes())
+            .unwrap();
+        File::create(self.key_path(identifier))
+            .unwrap()
+            .write_all(private_key.as_bytes())
+            .unwrap();
+    }
+
+    fn fetch_certificate(&self, identifier: &str) -> Option<(String, String)> {
+        match (File::open(self.chain_path(identifier)), File::open(self.key_path(identifier))) {
+            (Ok(mut chain_file), Ok(mut key_file)) => {
+                let mut chain_pem = String::new();
+                chain_file.read_to_string(&mut chain_pem);
+                let mut key_pem = String::new();
+                key_file.read_to_string(&mut key_pem);
+                Some((chain_pem, key_pem))
+            }
+            _ => None,
+        }
+    }
+}
+
+pub struct AutomaticCertResolver<C>
+    where C: CertificateCache
+{
     domains: Vec<String>,
     acme_account: acme_client::Account,
     active_cert: Mutex<Option<rustls::sign::CertChainAndSigner>>,
+    cert_cache: C,
     sni_challenges: Mutex<HashMap<String, rustls::sign::CertChainAndSigner>>,
 }
 
 
-// TODO: Disk cache for reading/writing certs so it doesn't have to obtain a new one on process
-// startup everytime.
-impl AutomaticCertResolver {
-    pub fn new(acme_url: &str, domains: Vec<String>) -> AutomaticCertResolver {
+impl<C> AutomaticCertResolver<C>
+    where C: CertificateCache
+{
+    pub fn new(acme_url: &str, domains: Vec<String>, cache: C) -> AutomaticCertResolver<C> {
         let acme_directory = acme_client::Directory::from_url(acme_url).unwrap();
+        let pems = cache.fetch_certificate(&domains_to_identifier(&domains));
+        let active_cert = Mutex::new(pems.map(|(chain_pem, private_key_pem)| {
+                                                  pems_to_rustls(&chain_pem, &private_key_pem)
+                                              }));
         AutomaticCertResolver {
             domains: domains,
+            cert_cache: cache,
             acme_account: acme_directory.account_registration().register().unwrap(),
-            active_cert: Mutex::new(None),
+            active_cert: active_cert,
             sni_challenges: Mutex::new(HashMap::new()),
         }
     }
@@ -51,6 +116,16 @@ impl AutomaticCertResolver {
         let chain = vec![openssl_cert_to_rustls(cert.cert())];
         let signer = openssl_pkey_to_rustls_signer(cert.pkey());
         *self.active_cert.lock().unwrap() = Some((chain, Arc::new(signer)));
+        self.cert_cache
+            .store_certificate(&domains_to_identifier(&self.domains),
+                               std::str::from_utf8(&cert.cert().to_pem().unwrap()).unwrap(),
+                               // TODO: ECDSA
+                               std::str::from_utf8(&cert.pkey()
+                                                        .rsa()
+                                                        .unwrap()
+                                                        .private_key_to_pem()
+                                                        .unwrap())
+                                       .unwrap());
     }
 
     fn setup_sni_challenge(&self, challenge: &acme_client::Challenge) {
@@ -131,7 +206,17 @@ fn openssl_pkey_to_rustls_signer(pkey: &openssl::pkey::PKey) -> Box<rustls::sign
     Box::new(rustls::sign::RSASigner::new(&openssl_pkey_to_rustls(pkey)).unwrap())
 }
 
-impl rustls::ResolvesServerCert for AutomaticCertResolver {
+fn pems_to_rustls(chain_pem: &str, private_key_pem: &str) -> rustls::sign::CertChainAndSigner {
+    let chain = rustls::internal::pemfile::certs(&mut Cursor::new(chain_pem)).unwrap();
+    // TODO: ECDSA
+    let ref private_key =
+        rustls::internal::pemfile::rsa_private_keys(&mut Cursor::new(private_key_pem)).unwrap()[0];
+    (chain, Arc::new(Box::new(rustls::sign::RSASigner::new(private_key).unwrap())))
+}
+
+impl<C> rustls::ResolvesServerCert for AutomaticCertResolver<C>
+    where C: CertificateCache
+{
     fn resolve(&self,
                server_name: Option<&str>,
                _: &[rustls::SignatureScheme])

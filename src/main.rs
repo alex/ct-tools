@@ -20,6 +20,7 @@ use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
@@ -182,9 +183,11 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             "dev" => "https://acme-staging.api.letsencrypt.org/directory",
             _ => unreachable!(),
         };
+        let cert_cache = letsencrypt::DiskCache::new(PathBuf::from("~/.ct-tools/certificates/"));
         tls_config.cert_resolver =
             Box::new(letsencrypt::AutomaticCertResolver::new(letsencrypt_url,
-                                                             vec![domain.unwrap().to_string()]));
+                                                             vec![domain.unwrap().to_string()],
+                                                             cert_cache));
     }
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
