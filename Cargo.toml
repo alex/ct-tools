@@ -4,20 +4,28 @@ version = "0.1.0"
 authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
 
 [dependencies]
+acme-client = "*"
+
 base64 = "*"
 
 byteorder = "*"
+
+chrono = "*"
 
 clap = "*"
 
 hex = "*"
 
 hyper = "*"
-hyper-rustls = "*"
+hyper-rustls = ">=0.5"
+
+openssl = "*"
 
 rayon = "*"
 
 ring = "*"
+
+rustls = { git = "https://github.com/ctz/rustls", branch = "jbp-dangerous-apis", features = ["dangerous_configuration"] }
 
 serde = "*"
 serde_derive = "*"
@@ -27,4 +35,11 @@ pem = "*"
 
 prettytable-rs = "*"
 
+tempfile = "*"
+
+tera = ">=0.10.4"
+
 url = "*"
+
+[replace]
+"rustls:0.7.0" = { git = "https://github.com/ctz/rustls", branch = "jbp-dangerous-apis", features = ["dangerous_configuration"] }

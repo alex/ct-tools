@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Certificate Transparency Client Submitter</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header container">
+                <h3 class="text-muted">CT Submitter</h3>
+            </div>
+            <div class="jumbotron">
+                <h1>Welcome to the CT Submitter!</h1>
+                <p class="lead">
+                    This site can be used for submitting the certificates from
+                    your PIV card to public certificate transparency logs!
+                </p>
+                {% if not cert %}
+                    <p>
+                        To get started, attach a PIV card reader into your
+                        computer and plug your PIV card in. Then refresh this
+                        site, you may need to restart your browser to get it to
+                        work.
+                    </p>
+                    <p>We will not submit anything without your permission.</p>
+                {% elif crtsh_url %}
+                    <div class="alert alert-success">
+                        Successfully submitted your certificate to CT logs!
+                    </div>
+                    <p>
+                        You'll be able to find it
+                        <a href="{{ crtsh_url }}">here</a>! Please note that it
+                        can take up to 24 hours for it to show up, although
+                        it's generally available within 30 minutes.
+                    </p>
+                {% else %}
+                    <p>
+                        Looks like your certificate is all set up, take a look
+                        and make sure you're ready to submit it:
+                    </p>
+                    <pre>{{ cert }}</pre>
+                    <div class="alert alert-warning">
+                        Pushing this button will irrevocably submit your data.
+                        Don't press unless you're sure.
+                    </div>
+                    <p>This may take a few seconds...</p>
+                    <form method="POST">
+                        <button type="submit" class="btn btn-primary btn-lg btn-block">
+                            Submit
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </body>
+</html>
