@@ -129,7 +129,7 @@ impl rustls::ResolvesServerCert for AutomaticCertResolver {
         }
         // Seperate scope so that the lock isn't held we enter `obtain_new_certificate`.
         {
-            let mut active_cert = self.active_cert.lock().unwrap();
+            let active_cert = self.active_cert.lock().unwrap();
             if cert_is_valid(&active_cert) {
                 return active_cert.clone();
             }
