@@ -44,7 +44,7 @@ pub fn fetch_trusted_ct_logs(http_client: &hyper::Client) -> Vec<Log> {
         .filter(|log| log.disqualified_at.is_none())
         // This log is about to be removed from Chrome due to downtime, remove it early because it
         // leads to long connection timeouts.
-        .filter(|log| log.url == "www.certificatetransparency.cn/ct/")
+        .filter(|log| log.url != "www.certificatetransparency.cn/ct/")
         .map(|log| {
                  Log {
                      url: log.url,
