@@ -83,6 +83,10 @@ fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::pkey:
     cert_builder.set_version(2).unwrap();
     cert_builder.set_pubkey(&pkey).unwrap();
 
+    let mut serial = openssl::bn::BigNum::new().unwrap();
+    serial.rand(128, openssl::bn::MSB_MAYBE_ZERO, false).unwrap();
+    cert_builder.set_serial_number(&serial.to_asn1_integer().unwrap()).unwrap();
+
     let mut subject_builder = openssl::x509::X509NameBuilder::new().unwrap();
     subject_builder
         .append_entry_by_text("CN", "ACME SNI Challenge Certificate")
