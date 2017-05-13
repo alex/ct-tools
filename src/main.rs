@@ -18,9 +18,9 @@ use ct_tools::{censys, crtsh, letsencrypt};
 use ct_tools::common::{Log, sha256_hex};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
+use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
 use std::time::Duration;
@@ -183,7 +183,10 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             "dev" => "https://acme-staging.api.letsencrypt.org/directory",
             _ => unreachable!(),
         };
-        let cert_cache = letsencrypt::DiskCache::new(PathBuf::from("~/.ct-tools/certificates/"));
+        let cert_cache = letsencrypt::DiskCache::new(env::home_dir()
+                                                         .unwrap()
+                                                         .join(".ct-tools")
+                                                         .join("certificates"));
         tls_config.cert_resolver =
             Box::new(letsencrypt::AutomaticCertResolver::new(letsencrypt_url,
                                                              vec![domain.unwrap().to_string()],
