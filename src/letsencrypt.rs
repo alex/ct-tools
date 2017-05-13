@@ -212,8 +212,8 @@ fn openssl_pkey_to_rustls_signer(pkey: &openssl::pkey::PKey) -> Box<rustls::sign
 fn pems_to_rustls(chain_pem: &str, private_key_pem: &str) -> rustls::sign::CertChainAndSigner {
     let chain = rustls::internal::pemfile::certs(&mut Cursor::new(chain_pem)).unwrap();
     // TODO: ECDSA
-    let ref private_key =
-        rustls::internal::pemfile::rsa_private_keys(&mut Cursor::new(private_key_pem)).unwrap()[0];
+    let private_key =
+        &rustls::internal::pemfile::rsa_private_keys(&mut Cursor::new(private_key_pem)).unwrap()[0];
     (chain, Arc::new(Box::new(rustls::sign::RSASigner::new(private_key).unwrap())))
 }
 
