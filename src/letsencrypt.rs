@@ -6,7 +6,7 @@ use openssl;
 use rustls;
 use std;
 use std::collections::HashMap;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{Cursor, Read, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -27,6 +27,7 @@ pub struct DiskCache {
 
 impl DiskCache {
     pub fn new(location: PathBuf) -> DiskCache {
+        fs::create_dir_all(&location).unwrap();
         DiskCache { location: location }
     }
 
