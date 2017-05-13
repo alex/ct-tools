@@ -182,7 +182,8 @@ fn server(domain: &str) {
         logs: logs,
     };
 
-    let addr = "127.0.0.1:1337";
+    // TODO: controllable listening address
+    let addr = "0.0.0.0:443";
     println!("Listening on https://{} ...", addr);
     hyper::Server::https(addr, tls_server)
         .unwrap()
