@@ -140,7 +140,7 @@ impl hyper::server::Handler for HttpHandler {
                 .output()
                 .unwrap()
                 .stdout;
-            return String::from_utf8_lossy(&stdout).into_owned();
+            String::from_utf8_lossy(&stdout).into_owned()
         });
 
         let mut context = tera::Context::new();
