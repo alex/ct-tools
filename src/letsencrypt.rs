@@ -17,8 +17,8 @@ pub trait CertificateCache: Send + Sync {
     fn fetch_certificate(&self, identifier: &str) -> Option<(String, String)>;
 }
 
-fn domains_to_identifier(domains: &[String]) -> String {
-    sha256_hex(domains.join("|").as_bytes())
+fn domains_to_identifier(acme_url: &str, domains: &[String]) -> String {
+    sha256_hex((acme_url.to_string() + "|" + &domains.join("|")).as_bytes())
 }
 
 pub struct DiskCache {
@@ -70,6 +70,7 @@ pub struct AutomaticCertResolver<C>
     where C: CertificateCache
 {
     domains: Vec<String>,
+    acme_url: String,
     acme_account: acme_client::Account,
     active_cert: Mutex<Option<rustls::sign::CertChainAndSigner>>,
     cert_cache: C,
@@ -82,13 +83,14 @@ impl<C> AutomaticCertResolver<C>
 {
     pub fn new(acme_url: &str, domains: Vec<String>, cache: C) -> AutomaticCertResolver<C> {
         let acme_directory = acme_client::Directory::from_url(acme_url).unwrap();
-        let pems = cache.fetch_certificate(&domains_to_identifier(&domains));
+        let pems = cache.fetch_certificate(&domains_to_identifier(acme_url, &domains));
         let active_cert = Mutex::new(pems.map(|(chain_pem, private_key_pem)| {
                                                   pems_to_rustls(&chain_pem, &private_key_pem)
                                               }));
         AutomaticCertResolver {
             domains: domains,
             cert_cache: cache,
+            acme_url: acme_url.to_string(),
             acme_account: acme_directory.account_registration().register().unwrap(),
             active_cert: active_cert,
             sni_challenges: Mutex::new(HashMap::new()),
@@ -118,7 +120,7 @@ impl<C> AutomaticCertResolver<C>
         let signer = openssl_pkey_to_rustls_signer(cert.pkey());
         *self.active_cert.lock().unwrap() = Some((chain, Arc::new(signer)));
         self.cert_cache
-            .store_certificate(&domains_to_identifier(&self.domains),
+            .store_certificate(&domains_to_identifier(&self.acme_url, &self.domains),
                                std::str::from_utf8(&cert.cert().to_pem().unwrap()).unwrap(),
                                // TODO: ECDSA
                                std::str::from_utf8(&cert.pkey()
