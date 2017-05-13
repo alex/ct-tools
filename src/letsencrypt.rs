@@ -89,6 +89,12 @@ fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::pkey:
     cert_builder.set_version(2).unwrap();
     cert_builder.set_pubkey(&pkey).unwrap();
 
+    let mut subject_builder = openssl::x509::X509NameBuilder::new().unwrap();
+    subject_builder.append_entry_by_text("CN", "ACME SNI Challenge Certificate").unwrap();
+    let subject = subject_builder.build();
+    cert_builder.set_subject_name(&subject).unwrap();
+    cert_builder.set_issuer_name(&subject).unwrap();
+
     let mut san = openssl::x509::extension::SubjectAlternativeName::new();
     san.dns(domain);
     let san_ext = san.build(&cert_builder.x509v3_context(None, None))
