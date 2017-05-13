@@ -18,7 +18,7 @@ pub trait CertificateCache: Send + Sync {
 }
 
 fn domains_to_identifier(acme_url: &str, domains: &[String]) -> String {
-    sha256_hex((acme_url.to_string() + "|" + &domains.join("|")).as_bytes())
+    sha256_hex(format!("{}|{}", acme_url, domains.join("|")).as_bytes())
 }
 
 pub struct DiskCache {
