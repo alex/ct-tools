@@ -160,7 +160,6 @@ impl rustls::ClientCertVerifier for NoVerificationCertificateVerifier {
         Ok(())
     }
 }
-static NO_VERIFICATION: NoVerificationCertificateVerifier = NoVerificationCertificateVerifier;
 
 
 fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) {
@@ -206,7 +205,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     // CT logs, so it doesn't matter if they're verified.
     tls_config
         .dangerous()
-        .set_certificate_verifier(&NO_VERIFICATION);
+        .set_certificate_verifier(Box::new(NoVerificationCertificateVerifier));
     let tls_server = hyper_rustls::TlsServer { cfg: Arc::new(tls_config) };
 
     let mut http_client = hyper::Client::with_connector(

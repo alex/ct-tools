@@ -580,7 +580,7 @@ dependencies = [
 [[package]]
 name = "rustls"
 version = "0.7.0"
-source = "git+https://github.com/ctz/rustls?branch=jbp-dangerous-apis#b5bddd3455c213737f552525dc549a4909de42c3"
+source = "git+https://github.com/ctz/rustls?branch=jbp-dangerous-apis#9e3d7a497e71713c7d7d6027b634366637faad95"
 dependencies = [
  "base64 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
