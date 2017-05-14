@@ -17,7 +17,8 @@ clap = "*"
 hex = "*"
 
 hyper = "*"
-hyper-rustls = ">=0.5"
+# TODO: hyper-rustls = ">=0.6" once this releases.
+hyper-rustls = { git = "https://github.com/alex/hyper-rustls/",  branch = "patch-1" }
 
 openssl = "*"
 
@@ -25,7 +26,7 @@ rayon = "*"
 
 ring = "*"
 
-rustls = { git = "https://github.com/ctz/rustls", branch = "jbp-dangerous-apis", features = ["dangerous_configuration"] }
+rustls = { version = ">=0.8", features = ["dangerous_configuration"] }
 
 serde = "*"
 serde_derive = "*"
@@ -40,6 +41,3 @@ tempfile = "*"
 tera = ">=0.10.4"
 
 url = "*"
-
-[replace]
-"rustls:0.7.0" = { git = "https://github.com/ctz/rustls", branch = "jbp-dangerous-apis", features = ["dangerous_configuration"] }
