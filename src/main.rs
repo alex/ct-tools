@@ -34,12 +34,25 @@ fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {
         .collect()
 }
 
-fn submit(paths: clap::Values) {
+fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
     let mut http_client = hyper::Client::with_connector(
         hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
     );
     http_client.set_read_timeout(Some(Duration::from_secs(15)));
-    let logs = fetch_trusted_ct_logs(&http_client);
+
+    let logs = match log_urls {
+        Some(urls) => {
+            urls.map(|url| {
+                         Log {
+                             url: url.to_string(),
+                             description: url.to_string(),
+                             is_google: false,
+                         }
+                     })
+                .collect()
+        }
+        None => fetch_trusted_ct_logs(&http_client),
+    };
 
     for path in paths {
         println!("Submitting {} ...", path);
@@ -240,7 +253,11 @@ fn main() {
                         .arg(clap::Arg::with_name("path")
                                  .multiple(true)
                                  .required(true)
-                                 .help("Path to certificate or chain")))
+                                 .help("Path to certificate or chain"))
+                        .arg(clap::Arg::with_name("log-url")
+                                 .long("--log-url")
+                                 .multiple(true)
+                                 .help("Log URL tu submit certificate to")))
         .subcommand(clap::SubCommand::with_name("check")
                         .about("Checks whether a certificate exists in CT logs")
                         .arg(clap::Arg::with_name("path")
@@ -264,7 +281,8 @@ fn main() {
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("submit") {
-        submit(matches.values_of("path").unwrap());
+        submit(matches.values_of("path").unwrap(),
+               matches.values_of("log-url"));
     } else if let Some(matches) = matches.subcommand_matches("check") {
         check(matches.values_of("path").unwrap());
     } else if let Some(matches) = matches.subcommand_matches("server") {
