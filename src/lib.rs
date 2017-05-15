@@ -13,7 +13,6 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate url;
 
-pub mod censys;
 pub mod common;
 pub mod crtsh;
 pub mod ct;

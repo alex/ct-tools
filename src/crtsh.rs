@@ -25,6 +25,11 @@ pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Vec<Vec
         .collect()
 }
 
+pub fn is_cert_logged(http_client: &hyper::Client, cert: &[u8]) -> bool {
+    let response = http_client.get(&format!("https://crt.sh/?d={}", sha256_hex(cert))).send().unwrap();
+    return response.status == hyper::status::StatusCode::Ok;
+}
+
 pub fn url_for_cert(cert: &[u8]) -> String {
     format!("https://crt.sh?q={}", sha256_hex(cert).to_uppercase())
 }

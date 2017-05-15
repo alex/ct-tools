@@ -14,7 +14,7 @@ extern crate tera;
 
 extern crate ct_tools;
 
-use ct_tools::{censys, crtsh, letsencrypt};
+use ct_tools::{crtsh, letsencrypt};
 use ct_tools::common::{Log, sha256_hex};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
@@ -86,7 +86,7 @@ fn check(paths: clap::Values) {
 
         let chain = pems_to_chain(&contents);
 
-        let is_logged = censys::is_cert_logged(&http_client, &chain[0]);
+        let is_logged = crtsh::is_cert_logged(&http_client, &chain[0]);
         if is_logged {
             println!("{} was already logged", path);
         } else {
