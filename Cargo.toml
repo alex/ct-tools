@@ -17,8 +17,7 @@ clap = "*"
 hex = "*"
 
 hyper = "*"
-# TODO: hyper-rustls = ">=0.6" once this releases.
-hyper-rustls = { git = "https://github.com/alex/hyper-rustls/",  branch = "patch-1" }
+hyper-rustls = ">=0.6"
 
 openssl = "*"
 
