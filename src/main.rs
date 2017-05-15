@@ -35,10 +35,10 @@ fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {
 }
 
 fn submit(paths: clap::Values) {
-    let http_client = hyper::Client::with_connector(
+    let mut http_client = hyper::Client::with_connector(
         hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
     );
-    // TODO: timeout on the http_client, but for submit_cert_to_logs only, not build_chain
+    http_client.set_read_timeout(Some(Duration::from_secs(15)));
     let logs = fetch_trusted_ct_logs(&http_client);
 
     for path in paths {
