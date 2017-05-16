@@ -68,7 +68,13 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
             // TODO: There's got to be some way to do this ourselves, instead of using crt.sh as a
             // glorified AIA chaser.
             println!("Only one certificate in chain, using crt.sh to build a full chain ...");
-            chain = crtsh::build_chain_for_cert(&http_client, &chain[0]);
+            chain = match crtsh::build_chain_for_cert(&http_client, &chain[0]) {
+                Some(c) => c,
+                None => {
+                    println!("Unable to build a chain");
+                    continue;
+                }
+            }
         }
         let scts = submit_cert_to_logs(&http_client, &logs, &chain);
 
@@ -125,12 +131,16 @@ impl hyper::server::Handler for HttpHandler {
 
         let mut crtsh_url = None;
         if peer_certs.is_some() && request.method == hyper::method::Method::Post {
-            let chain = crtsh::build_chain_for_cert(&self.http_client,
-                                                    &peer_certs.as_ref().unwrap()[0].0);
-            let scts = submit_cert_to_logs(&self.http_client, &self.logs, &chain);
-            if !scts.is_empty() {
-                crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
-                println!("Successfully submitted: {}", sha256_hex(&chain[0]));
+            match crtsh::build_chain_for_cert(&self.http_client,
+                                              &peer_certs.as_ref().unwrap()[0].0) {
+                Some(chain) => {
+                    let scts = submit_cert_to_logs(&self.http_client, &self.logs, &chain);
+                    if !scts.is_empty() {
+                        crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
+                        println!("Successfully submitted: {}", sha256_hex(&chain[0]));
+                    }
+                }
+                None => {}
             }
         }
 
