@@ -264,7 +264,7 @@ fn main() {
                         .arg(clap::Arg::with_name("log-url")
                                  .long("--log-url")
                                  .multiple(true)
-                                 .help("Log URL tu submit certificate to")))
+                                 .help("Log URL to submit certificate to")))
         .subcommand(clap::SubCommand::with_name("check")
                         .about("Checks whether a certificate exists in CT logs")
                         .arg(clap::Arg::with_name("path")
