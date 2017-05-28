@@ -265,6 +265,7 @@ fn main() {
                                  .help("Path to certificate or chain"))
                         .arg(clap::Arg::with_name("log-url")
                                  .long("--log-url")
+                                 .takes_value(true)
                                  .multiple(true)
                                  .help("Log URL to submit certificate to")))
         .subcommand(clap::SubCommand::with_name("check")
