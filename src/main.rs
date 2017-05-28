@@ -78,8 +78,10 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
         }
         let scts = submit_cert_to_logs(&http_client, &logs, &chain);
 
-        println!("Find the cert on crt.sh: {}",
-                 crtsh::url_for_cert(&chain[0]));
+        if !scts.is_empty() {
+            println!("Find the cert on crt.sh: {}",
+                     crtsh::url_for_cert(&chain[0]));
+        }
         let mut table = prettytable::Table::new();
         table.add_row(row!["Log", "SCT"]);
         for (log, sct) in scts {
