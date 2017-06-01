@@ -8,7 +8,6 @@ extern crate prettytable;
 extern crate ring;
 extern crate rustls;
 extern crate serde_json;
-extern crate tempfile;
 #[macro_use]
 extern crate tera;
 
@@ -21,7 +20,7 @@ use ct_tools::google::fetch_trusted_ct_logs;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -144,21 +143,25 @@ impl hyper::server::Handler for HttpHandler {
         }
 
         let rendered_cert = peer_certs.map(|chain| {
-            let mut tmp = tempfile::NamedTempFile::new().unwrap();
-            tmp.write_all(&chain[0].0).unwrap();
-            tmp.flush().unwrap();
-            let stdout = Command::new("openssl")
+            let mut process = Command::new("openssl")
                 .arg("x509")
                 .arg("-text")
                 .arg("-noout")
                 .arg("-inform")
                 .arg("der")
-                .arg("-in")
-                .arg(tmp.path().as_os_str())
-                .output()
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap();
+            process
+                .stdin
+                .as_mut()
                 .unwrap()
-                .stdout;
-            String::from_utf8_lossy(&stdout).into_owned()
+                .write_all(&chain[0].0)
+                .unwrap();
+            let out = process.wait_with_output().unwrap();
+            String::from_utf8_lossy(&out.stdout).into_owned()
         });
 
         let mut context = tera::Context::new();

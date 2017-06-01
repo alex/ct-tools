@@ -35,8 +35,6 @@ pem = "*"
 
 prettytable-rs = "*"
 
-tempfile = "*"
-
 tera = ">=0.10.4"
 
 url = "*"
