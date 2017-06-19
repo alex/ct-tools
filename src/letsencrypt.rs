@@ -53,7 +53,10 @@ impl CertificateCache for DiskCache {
     }
 
     fn fetch_certificate(&self, identifier: &str) -> Option<(String, String)> {
-        match (File::open(self.chain_path(identifier)), File::open(self.key_path(identifier))) {
+        match (
+            File::open(self.chain_path(identifier)),
+            File::open(self.key_path(identifier)),
+        ) {
             (Ok(mut chain_file), Ok(mut key_file)) => {
                 let mut chain_pem = String::new();
                 chain_file.read_to_string(&mut chain_pem).unwrap();
@@ -67,7 +70,8 @@ impl CertificateCache for DiskCache {
 }
 
 pub struct AutomaticCertResolver<C>
-    where C: CertificateCache
+where
+    C: CertificateCache,
 {
     domains: Vec<String>,
     acme_url: String,
@@ -79,14 +83,15 @@ pub struct AutomaticCertResolver<C>
 
 
 impl<C> AutomaticCertResolver<C>
-    where C: CertificateCache
+where
+    C: CertificateCache,
 {
     pub fn new(acme_url: &str, domains: Vec<String>, cache: C) -> AutomaticCertResolver<C> {
         let acme_directory = acme_client::Directory::from_url(acme_url).unwrap();
         let pems = cache.fetch_certificate(&domains_to_identifier(acme_url, &domains));
         let active_cert = Mutex::new(pems.map(|(chain_pem, private_key_pem)| {
-                                                  pems_to_rustls(&chain_pem, &private_key_pem)
-                                              }));
+            pems_to_rustls(&chain_pem, &private_key_pem)
+        }));
         AutomaticCertResolver {
             domains: domains,
             cert_cache: cache,
@@ -110,25 +115,23 @@ impl<C> AutomaticCertResolver<C>
         }
         let cert = self.acme_account
             .certificate_signer(&self.domains
-                                     .iter()
-                                     .map(|s| s.as_ref())
-                                     .collect::<Vec<&str>>())
+                .iter()
+                .map(|s| s.as_ref())
+                .collect::<Vec<&str>>())
             .sign_certificate()
             .unwrap();
         // TODO: intermediates
         let chain = vec![openssl_cert_to_rustls(cert.cert())];
         let signer = openssl_pkey_to_rustls_signer(cert.pkey());
         *self.active_cert.lock().unwrap() = Some((chain, Arc::new(signer)));
-        self.cert_cache
-            .store_certificate(&domains_to_identifier(&self.acme_url, &self.domains),
-                               std::str::from_utf8(&cert.cert().to_pem().unwrap()).unwrap(),
-                               // TODO: ECDSA
-                               std::str::from_utf8(&cert.pkey()
-                                                        .rsa()
-                                                        .unwrap()
-                                                        .private_key_to_pem()
-                                                        .unwrap())
-                                       .unwrap());
+        self.cert_cache.store_certificate(
+            &domains_to_identifier(&self.acme_url, &self.domains),
+            std::str::from_utf8(&cert.cert().to_pem().unwrap()).unwrap(),
+            // TODO: ECDSA
+            std::str::from_utf8(
+                &cert.pkey().rsa().unwrap().private_key_to_pem().unwrap(),
+            ).unwrap(),
+        );
     }
 
     fn setup_sni_challenge(&self, challenge: &acme_client::Challenge) {
@@ -137,10 +140,10 @@ impl<C> AutomaticCertResolver<C>
 
         let chain = vec![openssl_cert_to_rustls(&cert)];
         let signer = openssl_pkey_to_rustls_signer(&pkey);
-        self.sni_challenges
-            .lock()
-            .unwrap()
-            .insert(z_domain, (chain, Arc::new(signer)));
+        self.sni_challenges.lock().unwrap().insert(z_domain, (
+            chain,
+            Arc::new(signer),
+        ));
     }
 
     fn teardown_sni_challenge(&self, challenge: &acme_client::Challenge) {
@@ -206,7 +209,9 @@ pub fn openssl_pkey_to_rustls(pkey: &openssl::pkey::PKey) -> rustls::PrivateKey 
 
 fn openssl_pkey_to_rustls_signer(pkey: &openssl::pkey::PKey) -> Box<rustls::sign::Signer> {
     // TODO: ECDSA
-    Box::new(rustls::sign::RSASigner::new(&openssl_pkey_to_rustls(pkey)).unwrap())
+    Box::new(
+        rustls::sign::RSASigner::new(&openssl_pkey_to_rustls(pkey)).unwrap(),
+    )
 }
 
 fn pems_to_rustls(chain_pem: &str, private_key_pem: &str) -> rustls::sign::CertChainAndSigner {
@@ -214,16 +219,21 @@ fn pems_to_rustls(chain_pem: &str, private_key_pem: &str) -> rustls::sign::CertC
     // TODO: ECDSA
     let private_key =
         &rustls::internal::pemfile::rsa_private_keys(&mut Cursor::new(private_key_pem)).unwrap()[0];
-    (chain, Arc::new(Box::new(rustls::sign::RSASigner::new(private_key).unwrap())))
+    (
+        chain,
+        Arc::new(Box::new(rustls::sign::RSASigner::new(private_key).unwrap())),
+    )
 }
 
 impl<C> rustls::ResolvesServerCert for AutomaticCertResolver<C>
-    where C: CertificateCache
+where
+    C: CertificateCache,
 {
-    fn resolve(&self,
-               server_name: Option<&str>,
-               _: &[rustls::SignatureScheme])
-               -> Option<rustls::sign::CertChainAndSigner> {
+    fn resolve(
+        &self,
+        server_name: Option<&str>,
+        _: &[rustls::SignatureScheme],
+    ) -> Option<rustls::sign::CertChainAndSigner> {
 
         if let Some(sni) = server_name {
             if let Some(cert) = self.sni_challenges.lock().unwrap().get(sni) {
@@ -258,8 +268,9 @@ fn cert_is_expired(cert: &rustls::Certificate) -> bool {
 
 
 fn from_asn1_time(t: &openssl::asn1::Asn1TimeRef) -> chrono::DateTime<chrono::UTC> {
-    let dt = chrono::DateTime::parse_from_str(&t.to_string().replace(" GMT", " +00:00"),
-                                              "%b %e %T %Y %z")
-            .unwrap();
+    let dt = chrono::DateTime::parse_from_str(
+        &t.to_string().replace(" GMT", " +00:00"),
+        "%b %e %T %Y %z",
+    ).unwrap();
     chrono::DateTime::<chrono::UTC>::from_utc(dt.naive_utc(), chrono::UTC)
 }

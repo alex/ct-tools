@@ -40,10 +40,11 @@ impl SignedCertificateTimestamp {
 }
 
 
-fn submit_to_log(http_client: &hyper::Client,
-                 url: &str,
-                 payload: &[u8])
-                 -> Option<SignedCertificateTimestamp> {
+fn submit_to_log(
+    http_client: &hyper::Client,
+    url: &str,
+    payload: &[u8],
+) -> Option<SignedCertificateTimestamp> {
     let mut url = "https://".to_string() + url;
     if !url.ends_with('/') {
         url += "/";
@@ -68,7 +69,9 @@ fn submit_to_log(http_client: &hyper::Client,
 
     // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS in
     // the face of a dumb or malicious log.
-    Some(serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap())
+    Some(
+        serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap(),
+    )
 }
 
 #[derive(Serialize, Deserialize)]
@@ -76,19 +79,19 @@ pub struct AddChainRequest {
     pub chain: Vec<String>,
 }
 
-pub fn submit_cert_to_logs<'a>(http_client: &hyper::Client,
-                               logs: &'a [Log],
-                               cert: &[Vec<u8>])
-                               -> Vec<(&'a Log, SignedCertificateTimestamp)> {
+pub fn submit_cert_to_logs<'a>(
+    http_client: &hyper::Client,
+    logs: &'a [Log],
+    cert: &[Vec<u8>],
+) -> Vec<(&'a Log, SignedCertificateTimestamp)> {
     let payload = serde_json::to_vec(&AddChainRequest {
-                                         chain: cert.iter().map(|r| base64::encode(r)).collect(),
-                                     })
-            .unwrap();
+        chain: cert.iter().map(|r| base64::encode(r)).collect(),
+    }).unwrap();
 
     logs.par_iter()
         .filter_map(|log| {
-                        let sct = submit_to_log(http_client, &log.url, &payload);
-                        sct.map(|s| (log, s))
-                    })
+            let sct = submit_to_log(http_client, &log.url, &payload);
+            sct.map(|s| (log, s))
+        })
         .collect()
 }

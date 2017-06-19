@@ -22,11 +22,13 @@ pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Option<
     }
 
     let add_chain_request: AddChainRequest = serde_json::from_reader(response).unwrap();
-    Some(add_chain_request
-             .chain
-             .iter()
-             .map(|c| base64::decode(c).unwrap())
-             .collect())
+    Some(
+        add_chain_request
+            .chain
+            .iter()
+            .map(|c| base64::decode(c).unwrap())
+            .collect(),
+    )
 }
 
 pub fn is_cert_logged(http_client: &hyper::Client, cert: &[u8]) -> bool {

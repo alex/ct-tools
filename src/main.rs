@@ -34,21 +34,20 @@ fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {
 }
 
 fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
-    let mut http_client = hyper::Client::with_connector(
-        hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-    );
+    let mut http_client = hyper::Client::with_connector(hyper::net::HttpsConnector::new(
+        hyper_rustls::TlsClient::new(),
+    ));
     http_client.set_read_timeout(Some(Duration::from_secs(15)));
 
     let logs = match log_urls {
         Some(urls) => {
             urls.map(|url| {
-                         Log {
-                             url: url.to_string(),
-                             description: url.to_string(),
-                             is_google: false,
-                         }
-                     })
-                .collect()
+                Log {
+                    url: url.to_string(),
+                    description: url.to_string(),
+                    is_google: false,
+                }
+            }).collect()
         }
         None => fetch_trusted_ct_logs(&http_client),
     };
@@ -78,8 +77,10 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
         let scts = submit_cert_to_logs(&http_client, &logs, &chain);
 
         if !scts.is_empty() {
-            println!("Find the cert on crt.sh: {}",
-                     crtsh::url_for_cert(&chain[0]));
+            println!(
+                "Find the cert on crt.sh: {}",
+                crtsh::url_for_cert(&chain[0])
+            );
         }
         let mut table = prettytable::Table::new();
         table.add_row(row!["Log", "SCT"]);
@@ -93,9 +94,9 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
 }
 
 fn check(paths: clap::Values) {
-    let http_client = hyper::Client::with_connector(
-        hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-    );
+    let http_client = hyper::Client::with_connector(hyper::net::HttpsConnector::new(
+        hyper_rustls::TlsClient::new(),
+    ));
 
     for path in paths {
         let mut contents = String::new();
@@ -132,8 +133,11 @@ impl hyper::server::Handler for HttpHandler {
 
         let mut crtsh_url = None;
         if peer_certs.is_some() && request.method == hyper::method::Method::Post {
-            if let Some(chain) = crtsh::build_chain_for_cert(&self.http_client,
-                                                             &peer_certs.as_ref().unwrap()[0].0) {
+            if let Some(chain) = crtsh::build_chain_for_cert(
+                &self.http_client,
+                &peer_certs.as_ref().unwrap()[0].0,
+            )
+            {
                 let scts = submit_cert_to_logs(&self.http_client, &self.logs, &chain);
                 if !scts.is_empty() {
                     crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
@@ -168,20 +172,23 @@ impl hyper::server::Handler for HttpHandler {
         context.add("cert", &rendered_cert);
         context.add("crtsh_url", &crtsh_url);
         response
-            .send(self.templates
-                      .render("home.html", &context)
-                      .unwrap()
-                      .as_bytes())
+            .send(
+                self.templates
+                    .render("home.html", &context)
+                    .unwrap()
+                    .as_bytes(),
+            )
             .unwrap();
     }
 }
 
 struct NoVerificationCertificateVerifier;
 impl rustls::ClientCertVerifier for NoVerificationCertificateVerifier {
-    fn verify_client_cert(&self,
-                          _: &rustls::RootCertStore,
-                          _: &[rustls::Certificate])
-                          -> Result<(), rustls::TLSError> {
+    fn verify_client_cert(
+        &self,
+        _: &rustls::RootCertStore,
+        _: &[rustls::Certificate],
+    ) -> Result<(), rustls::TLSError> {
         Ok(())
     }
 }
@@ -206,36 +213,39 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     if local_dev {
         // TODO: not all the details on the cert are perfect, but it's fine.
         let (cert, pkey) = letsencrypt::generate_temporary_cert("localhost");
-        tls_config.set_single_cert(vec![letsencrypt::openssl_cert_to_rustls(&cert)],
-                                   letsencrypt::openssl_pkey_to_rustls(&pkey));
+        tls_config.set_single_cert(
+            vec![letsencrypt::openssl_cert_to_rustls(&cert)],
+            letsencrypt::openssl_pkey_to_rustls(&pkey),
+        );
     } else {
         let letsencrypt_url = match letsencrypt_env.unwrap() {
             "prod" => "https://acme-v01.api.letsencrypt.org/directory",
             "dev" => "https://acme-staging.api.letsencrypt.org/directory",
             _ => unreachable!(),
         };
-        let cert_cache = letsencrypt::DiskCache::new(env::home_dir()
-                                                         .unwrap()
-                                                         .join(".ct-tools")
-                                                         .join("certificates"));
-        tls_config.cert_resolver =
-            Box::new(letsencrypt::AutomaticCertResolver::new(letsencrypt_url,
-                                                             vec![domain.unwrap().to_string()],
-                                                             cert_cache));
+        let cert_cache =
+            letsencrypt::DiskCache::new(env::home_dir().unwrap().join(".ct-tools").join(
+                "certificates",
+            ));
+        tls_config.cert_resolver = Box::new(letsencrypt::AutomaticCertResolver::new(
+            letsencrypt_url,
+            vec![domain.unwrap().to_string()],
+            cert_cache,
+        ));
     }
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
     // Disable certificate verification. In any normal context, this would be horribly insecure!
     // However, all we're doing is taking the certs and then turning around and submitting them to
     // CT logs, so it doesn't matter if they're verified.
-    tls_config
-        .dangerous()
-        .set_certificate_verifier(Box::new(NoVerificationCertificateVerifier));
+    tls_config.dangerous().set_certificate_verifier(Box::new(
+        NoVerificationCertificateVerifier,
+    ));
     let tls_server = hyper_rustls::TlsServer { cfg: Arc::new(tls_config) };
 
-    let mut http_client = hyper::Client::with_connector(
-        hyper::net::HttpsConnector::new(hyper_rustls::TlsClient::new())
-    );
+    let mut http_client = hyper::Client::with_connector(hyper::net::HttpsConnector::new(
+        hyper_rustls::TlsClient::new(),
+    ));
     let logs = fetch_trusted_ct_logs(&http_client);
     http_client.set_write_timeout(Some(Duration::from_secs(5)));
     http_client.set_read_timeout(Some(Duration::from_secs(5)));
@@ -260,47 +270,67 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
 
 fn main() {
     let matches = clap::App::new("ct-tools")
-        .subcommand(clap::SubCommand::with_name("submit")
-                        .about("Directly submits certificates to CT logs")
-                        .arg(clap::Arg::with_name("path")
-                                 .multiple(true)
-                                 .required(true)
-                                 .help("Path to certificate or chain"))
-                        .arg(clap::Arg::with_name("log-url")
-                                 .long("--log-url")
-                                 .takes_value(true)
-                                 .multiple(true)
-                                 .help("Log URL to submit certificate to")))
-        .subcommand(clap::SubCommand::with_name("check")
-                        .about("Checks whether a certificate exists in CT logs")
-                        .arg(clap::Arg::with_name("path")
-                                 .multiple(true)
-                                 .required(true)
-                                 .help("Path to certificate or chain")))
-        .subcommand(clap::SubCommand::with_name("server")
-                        .about("Run an HTTPS server that submits client to CT logs")
-                        .arg(clap::Arg::with_name("local-dev")
-                                 .long("--local-dev")
-                                 .help("Local development, do not obtain a certificate"))
-                        .arg(clap::Arg::with_name("domain")
-                                 .takes_value(true)
-                                 .long("--domain")
-                                 .help("Domain this is running as"))
-                        .arg(clap::Arg::with_name("letsencrypt-env")
-                                 .takes_value(true)
-                                 .long("--letsencrypt-env")
-                                 .possible_values(&["dev", "prod"])
-                                 .help("Let's Encrypt environment to use")))
+        .subcommand(
+            clap::SubCommand::with_name("submit")
+                .about("Directly submits certificates to CT logs")
+                .arg(
+                    clap::Arg::with_name("path")
+                        .multiple(true)
+                        .required(true)
+                        .help("Path to certificate or chain"),
+                )
+                .arg(
+                    clap::Arg::with_name("log-url")
+                        .long("--log-url")
+                        .takes_value(true)
+                        .multiple(true)
+                        .help("Log URL to submit certificate to"),
+                ),
+        )
+        .subcommand(
+            clap::SubCommand::with_name("check")
+                .about("Checks whether a certificate exists in CT logs")
+                .arg(
+                    clap::Arg::with_name("path")
+                        .multiple(true)
+                        .required(true)
+                        .help("Path to certificate or chain"),
+                ),
+        )
+        .subcommand(
+            clap::SubCommand::with_name("server")
+                .about("Run an HTTPS server that submits client to CT logs")
+                .arg(clap::Arg::with_name("local-dev").long("--local-dev").help(
+                    "Local development, do not obtain a certificate",
+                ))
+                .arg(
+                    clap::Arg::with_name("domain")
+                        .takes_value(true)
+                        .long("--domain")
+                        .help("Domain this is running as"),
+                )
+                .arg(
+                    clap::Arg::with_name("letsencrypt-env")
+                        .takes_value(true)
+                        .long("--letsencrypt-env")
+                        .possible_values(&["dev", "prod"])
+                        .help("Let's Encrypt environment to use"),
+                ),
+        )
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("submit") {
-        submit(matches.values_of("path").unwrap(),
-               matches.values_of("log-url"));
+        submit(
+            matches.values_of("path").unwrap(),
+            matches.values_of("log-url"),
+        );
     } else if let Some(matches) = matches.subcommand_matches("check") {
         check(matches.values_of("path").unwrap());
     } else if let Some(matches) = matches.subcommand_matches("server") {
-        server(matches.is_present("local-dev"),
-               matches.value_of("domain"),
-               matches.value_of("letsencrypt-env"));
+        server(
+            matches.is_present("local-dev"),
+            matches.value_of("domain"),
+            matches.value_of("letsencrypt-env"),
+        );
     }
 }
