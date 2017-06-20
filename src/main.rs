@@ -33,10 +33,17 @@ fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
         .collect()
 }
 
+fn new_http_client() -> hyper::Client {
+    hyper::Client::with_connector(hyper::client::pool::Pool::with_connector(
+        hyper::client::pool::Config::default(),
+        hyper::net::HttpsConnector::new(
+            hyper_rustls::TlsClient::new(),
+        ),
+    ))
+}
+
 fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
-    let mut http_client = hyper::Client::with_connector(hyper::net::HttpsConnector::new(
-        hyper_rustls::TlsClient::new(),
-    ));
+    let mut http_client = new_http_client();
     http_client.set_read_timeout(Some(Duration::from_secs(15)));
 
     let logs = match log_urls {
@@ -94,12 +101,7 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
 }
 
 fn check(paths: clap::Values) {
-    let http_client = hyper::Client::with_connector(hyper::client::pool::Pool::with_connector(
-        hyper::client::pool::Config::default(),
-        hyper::net::HttpsConnector::new(
-            hyper_rustls::TlsClient::new(),
-        ),
-    ));
+    let http_client = new_http_client();
 
     for path in paths {
         let mut contents = Vec::new();
@@ -246,9 +248,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     ));
     let tls_server = hyper_rustls::TlsServer { cfg: Arc::new(tls_config) };
 
-    let mut http_client = hyper::Client::with_connector(hyper::net::HttpsConnector::new(
-        hyper_rustls::TlsClient::new(),
-    ));
+    let mut http_client = new_http_client();
     let logs = fetch_trusted_ct_logs(&http_client);
     http_client.set_write_timeout(Some(Duration::from_secs(5)));
     http_client.set_read_timeout(Some(Duration::from_secs(5)));
