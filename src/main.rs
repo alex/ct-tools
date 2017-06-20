@@ -25,7 +25,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 
-fn pems_to_chain(data: &str) -> Vec<Vec<u8>> {
+fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
     pem::parse_many(data)
         .into_iter()
         .filter(|p| p.tag == "CERTIFICATE")
@@ -55,10 +55,10 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
     for path in paths {
         println!("Submitting {} ...", path);
 
-        let mut contents = String::new();
+        let mut contents = Vec::new();
         File::open(path)
             .unwrap()
-            .read_to_string(&mut contents)
+            .read_to_end(&mut contents)
             .unwrap();
 
         let mut chain = pems_to_chain(&contents);
@@ -99,10 +99,10 @@ fn check(paths: clap::Values) {
     ));
 
     for path in paths {
-        let mut contents = String::new();
+        let mut contents = Vec::new();
         File::open(path)
             .unwrap()
-            .read_to_string(&mut contents)
+            .read_to_end(&mut contents)
             .unwrap();
 
         let chain = pems_to_chain(&contents);
