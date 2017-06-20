@@ -18,13 +18,13 @@ use ct_tools::{crtsh, letsencrypt};
 use ct_tools::common::{Log, sha256_hex};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::time::Duration;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
