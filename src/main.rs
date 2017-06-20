@@ -94,8 +94,11 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
 }
 
 fn check(paths: clap::Values) {
-    let http_client = hyper::Client::with_connector(hyper::net::HttpsConnector::new(
-        hyper_rustls::TlsClient::new(),
+    let http_client = hyper::Client::with_connector(hyper::client::pool::Pool::with_connector(
+        hyper::client::pool::Config::default(),
+        hyper::net::HttpsConnector::new(
+            hyper_rustls::TlsClient::new(),
+        ),
     ));
 
     for path in paths {

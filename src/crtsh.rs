@@ -34,6 +34,7 @@ pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Option<
 pub fn is_cert_logged(http_client: &hyper::Client, cert: &[u8]) -> bool {
     let response = http_client
         .get(&format!("https://crt.sh/?d={}", sha256_hex(cert)))
+        .header(hyper::header::Connection::keep_alive())
         .send()
         .unwrap();
     response.status == hyper::status::StatusCode::Ok
