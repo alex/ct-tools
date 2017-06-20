@@ -5,6 +5,7 @@ extern crate hyper_rustls;
 extern crate pem;
 #[macro_use]
 extern crate prettytable;
+extern crate rayon;
 extern crate ring;
 extern crate rustls;
 extern crate serde_json;
@@ -23,6 +24,7 @@ use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use std::time::Duration;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
@@ -103,7 +105,8 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
 fn check(paths: clap::Values) {
     let http_client = new_http_client();
 
-    for path in paths {
+    let paths = paths.collect::<Vec<_>>();
+    paths.par_iter().for_each(|path| {
         let mut contents = Vec::new();
         File::open(path)
             .unwrap()
@@ -118,7 +121,7 @@ fn check(paths: clap::Values) {
         } else {
             println!("{} has not been logged", path);
         }
-    }
+    });
 }
 
 struct HttpHandler {
