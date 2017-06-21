@@ -10,12 +10,15 @@ pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Option<
         .append_pair("b64cert", &base64::encode(cert))
         .finish();
     let body_bytes = body.as_bytes();
-    let response = http_client
+    let response = match http_client
         .post("https://crt.sh/gen-add-chain")
         .header(hyper::header::ContentType::form_url_encoded())
         .body(hyper::client::Body::BufBody(body_bytes, body_bytes.len()))
-        .send()
-        .unwrap();
+        .send() {
+        Ok(response) => response,
+        // TODO: maybe be more selective in error handling
+        Err(_) => return None,
+    };
 
     if response.status == hyper::status::StatusCode::NotFound {
         return None;
