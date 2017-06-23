@@ -13,6 +13,7 @@ pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Option<
     let response = match http_client
         .post("https://crt.sh/gen-add-chain")
         .header(hyper::header::ContentType::form_url_encoded())
+        .header(hyper::header::Connection::keep_alive())
         .body(hyper::client::Body::BufBody(body_bytes, body_bytes.len()))
         .send() {
         Ok(response) => response,
