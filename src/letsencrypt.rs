@@ -263,14 +263,14 @@ fn cert_is_valid(cert: &Option<rustls::sign::CertChainAndSigner>) -> bool {
 
 fn cert_is_expired(cert: &rustls::Certificate) -> bool {
     let openssl_cert = openssl::x509::X509::from_der(&cert.0).unwrap();
-    from_asn1_time(openssl_cert.not_after()) < chrono::UTC::now()
+    from_asn1_time(openssl_cert.not_after()) < chrono::Utc::now()
 }
 
 
-fn from_asn1_time(t: &openssl::asn1::Asn1TimeRef) -> chrono::DateTime<chrono::UTC> {
+fn from_asn1_time(t: &openssl::asn1::Asn1TimeRef) -> chrono::DateTime<chrono::Utc> {
     let dt = chrono::DateTime::parse_from_str(
         &t.to_string().replace(" GMT", " +00:00"),
         "%b %e %T %Y %z",
     ).unwrap();
-    chrono::DateTime::<chrono::UTC>::from_utc(dt.naive_utc(), chrono::UTC)
+    chrono::DateTime::<chrono::Utc>::from_utc(dt.naive_utc(), chrono::Utc)
 }
