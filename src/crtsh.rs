@@ -8,6 +8,7 @@ use url;
 pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Option<Vec<Vec<u8>>> {
     let body = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("b64cert", &base64::encode(cert))
+        .append_pair("onlyonechain", "Y")
         .finish();
     let body_bytes = body.as_bytes();
     let response = match http_client
