@@ -62,15 +62,16 @@ fn submit_to_log(
     };
 
     // 400, 403, and probably some others generally indicate a log doesn't accept certs from this
-    // root, or that the log isn't accepting new submissions.
-    if response.status.is_client_error() {
+    // root, or that the log isn't accepting new submissions. Server errors mean there's nothing we
+    // can do.
+    if response.status.is_client_error() || response.status.is_server_error() {
         return None;
     }
 
     // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS in
     // the face of a dumb or malicious log.
     Some(
-        serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap(),
+        serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap()
     )
 }
 
