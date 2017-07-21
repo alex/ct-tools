@@ -71,7 +71,7 @@ fn submit_to_log(
     // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS in
     // the face of a dumb or malicious log.
     Some(
-        serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap()
+        serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap(),
     )
 }
 
