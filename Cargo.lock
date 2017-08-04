@@ -19,7 +19,7 @@ dependencies = [
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "tera 0.10.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tera 0.10.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -749,7 +749,7 @@ dependencies = [
 
 [[package]]
 name = "tera"
-version = "0.10.8"
+version = "0.10.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "chrono 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1026,7 +1026,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum syn 0.11.11 (registry+https://github.com/rust-lang/crates.io-index)" = "d3b891b9015c88c576343b9b3e41c2c11a51c219ef067b264bd9c8aa9b441dad"
 "checksum synom 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a393066ed9010ebaed60b9eafa373d4b1baac186dd7e008555b0f702b51945b6"
 "checksum tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "87974a6f5c1dfb344d733055601650059a3363de2a6104819293baff662132d6"
-"checksum tera 0.10.8 (registry+https://github.com/rust-lang/crates.io-index)" = "62736a6d748fd2c5a8b4be21010e37d79f78aea3c2e07a9e13ff5c70864a3129"
+"checksum tera 0.10.9 (registry+https://github.com/rust-lang/crates.io-index)" = "f489baf141c77dbcd2734a339fff2878ca1f4253481dfc4adf9e063b5c3f5a96"
 "checksum term 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "fa63644f74ce96fbeb9b794f66aff2a52d601cbd5e80f4b97123e3899f4570f1"
 "checksum term_size 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e2b6b55df3198cc93372e85dd2ed817f0e38ce8cc0f22eb32391bfad9c4bf209"
 "checksum textwrap 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f728584ea33b0ad19318e20557cb0a39097751dbb07171419673502f848c7af6"
