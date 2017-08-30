@@ -15,23 +15,29 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
         .append_pair("b64cert", &base64::encode(cert))
         .append_pair("onlyonechain", "Y")
         .finish();
-    let body_bytes = body.as_bytes();
-    let response = match http_client
-        .post("https://crt.sh/gen-add-chain")
-        .header(hyper::header::ContentType::form_url_encoded())
-        .header(hyper::header::Connection::keep_alive())
-        .body(hyper::client::Body::BufBody(body_bytes, body_bytes.len()))
-        .send() {
+    let request = hyper::Request::new(
+        hyper::Method::Post,
+        "https://crt.sh/gen-add-chain".parse().unwrap(),
+    );
+    request.headers_mut().set(
+        hyper::header::ContentType::form_url_encoded(),
+    );
+    request.headers_mut().set(
+        hyper::header::Connection::keep_alive(),
+    );
+    request.set_body(body.into_bytes());
+    let response = match await!(http_client.request(request)) {
         Ok(response) => response,
         // TODO: maybe be more selective in error handling
         Err(_) => return None,
     };
 
-    if response.status == hyper::StatusCode::NotFound {
+    if response.status() == hyper::StatusCode::NotFound {
         return None;
     }
 
-    let add_chain_request: AddChainRequest = serde_json::from_reader(response).unwrap();
+    let add_chain_request: AddChainRequest =
+        serde_json::from_slice(&await!(response.body().concat2()).unwrap()).unwrap();
     Some(
         add_chain_request
             .chain
@@ -46,12 +52,17 @@ pub fn is_cert_logged<C: hyper::client::Connect>(
     http_client: &hyper::Client<C>,
     cert: &[u8],
 ) -> bool {
-    let response = http_client
-        .get(&format!("https://crt.sh/?d={}", sha256_hex(cert)))
-        .header(hyper::header::Connection::keep_alive())
-        .send()
-        .unwrap();
-    response.status == hyper::StatusCode::Ok
+    let mut request = hyper::Request::new(
+        hyper::Method::Get,
+        format!("https://crt.sh/?d={}", sha256_hex(cert))
+            .parse()
+            .unwrap(),
+    );
+    request.headers_mut().set(
+        hyper::header::Connection::keep_alive(),
+    );
+    let response = await!(http_client.request(request)).unwrap();
+    response.status() == hyper::StatusCode::Ok
 }
 
 pub fn url_for_cert(cert: &[u8]) -> String {
