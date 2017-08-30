@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
 
 [dependencies]
+futures = "*"
+futures-await = { git = "https://github.com/alexcrichton/futures-await" }
+
 acme-client = "*"
 
 base64 = "*"

@@ -2,10 +2,13 @@ use super::common::Log;
 
 use base64;
 use byteorder::{BigEndian, WriteBytesExt};
+
+use futures::prelude::*;
 use hyper;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde_json;
 use std::io::{Read, Write};
+
 
 
 #[derive(Debug, Deserialize)]
@@ -40,8 +43,9 @@ impl SignedCertificateTimestamp {
 }
 
 
-fn submit_to_log(
-    http_client: &hyper::Client,
+#[async]
+fn submit_to_log<C: hyper::client::Connect>(
+    http_client: &hyper::Client<C>,
     url: &str,
     payload: &[u8],
 ) -> Option<SignedCertificateTimestamp> {
@@ -80,8 +84,9 @@ pub struct AddChainRequest {
     pub chain: Vec<String>,
 }
 
-pub fn submit_cert_to_logs<'a>(
-    http_client: &hyper::Client,
+#[async]
+pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
+    http_client: &hyper::Client<C>,
     logs: &'a [Log],
     cert: &[Vec<u8>],
 ) -> Vec<(&'a Log, SignedCertificateTimestamp)> {

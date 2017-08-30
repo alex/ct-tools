@@ -1,11 +1,16 @@
 use super::common::sha256_hex;
 use super::ct::AddChainRequest;
 use base64;
+use futures::prelude::*;
 use hyper;
 use serde_json;
 use url;
 
-pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Option<Vec<Vec<u8>>> {
+#[async]
+pub fn build_chain_for_cert<C: hyper::client::Connect>(
+    http_client: &hyper::Client<C>,
+    cert: &[u8],
+) -> Option<Vec<Vec<u8>>> {
     let body = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("b64cert", &base64::encode(cert))
         .append_pair("onlyonechain", "Y")
@@ -22,7 +27,7 @@ pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Option<
         Err(_) => return None,
     };
 
-    if response.status == hyper::status::StatusCode::NotFound {
+    if response.status == hyper::StatusCode::NotFound {
         return None;
     }
 
@@ -36,13 +41,17 @@ pub fn build_chain_for_cert(http_client: &hyper::Client, cert: &[u8]) -> Option<
     )
 }
 
-pub fn is_cert_logged(http_client: &hyper::Client, cert: &[u8]) -> bool {
+#[async]
+pub fn is_cert_logged<C: hyper::client::Connect>(
+    http_client: &hyper::Client<C>,
+    cert: &[u8],
+) -> bool {
     let response = http_client
         .get(&format!("https://crt.sh/?d={}", sha256_hex(cert)))
         .header(hyper::header::Connection::keep_alive())
         .send()
         .unwrap();
-    response.status == hyper::status::StatusCode::Ok
+    response.status == hyper::StatusCode::Ok
 }
 
 pub fn url_for_cert(cert: &[u8]) -> String {

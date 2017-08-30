@@ -76,9 +76,9 @@ where
     domains: Vec<String>,
     acme_url: String,
     acme_account: acme_client::Account,
-    active_cert: Mutex<Option<rustls::sign::CertChainAndSigner>>,
+    active_cert: Mutex<Option<rustls::sign::CertifiedKey>>,
     cert_cache: C,
-    sni_challenges: Mutex<HashMap<String, rustls::sign::CertChainAndSigner>>,
+    sni_challenges: Mutex<HashMap<String, rustls::sign::CertifiedKey>>,
 }
 
 
@@ -207,21 +207,23 @@ pub fn openssl_pkey_to_rustls(pkey: &openssl::pkey::PKey) -> rustls::PrivateKey 
     rustls::PrivateKey(pkey.rsa().unwrap().private_key_to_der().unwrap())
 }
 
-fn openssl_pkey_to_rustls_signer(pkey: &openssl::pkey::PKey) -> Box<rustls::sign::Signer> {
+fn openssl_pkey_to_rustls_signer(pkey: &openssl::pkey::PKey) -> Box<rustls::sign::SigningKey> {
     // TODO: ECDSA
     Box::new(
-        rustls::sign::RSASigner::new(&openssl_pkey_to_rustls(pkey)).unwrap(),
+        rustls::sign::RSASigningKey::new(&openssl_pkey_to_rustls(pkey)).unwrap(),
     )
 }
 
-fn pems_to_rustls(chain_pem: &str, private_key_pem: &str) -> rustls::sign::CertChainAndSigner {
+fn pems_to_rustls(chain_pem: &str, private_key_pem: &str) -> rustls::sign::CertifiedKey {
     let chain = rustls::internal::pemfile::certs(&mut Cursor::new(chain_pem)).unwrap();
     // TODO: ECDSA
     let private_key =
         &rustls::internal::pemfile::rsa_private_keys(&mut Cursor::new(private_key_pem)).unwrap()[0];
-    (
+    rustls::sign::CertifiedKey::new(
         chain,
-        Arc::new(Box::new(rustls::sign::RSASigner::new(private_key).unwrap())),
+        Arc::new(Box::new(
+            rustls::sign::RSASigningKey::new(private_key).unwrap(),
+        )),
     )
 }
 
@@ -233,7 +235,7 @@ where
         &self,
         server_name: Option<&str>,
         _: &[rustls::SignatureScheme],
-    ) -> Option<rustls::sign::CertChainAndSigner> {
+    ) -> Option<rustls::sign::CertifiedKey> {
 
         if let Some(sni) = server_name {
             if let Some(cert) = self.sni_challenges.lock().unwrap().get(sni) {
@@ -254,7 +256,7 @@ where
     }
 }
 
-fn cert_is_valid(cert: &Option<rustls::sign::CertChainAndSigner>) -> bool {
+fn cert_is_valid(cert: &Option<rustls::sign::CertifiedKey>) -> bool {
     match *cert {
         Some((ref chain, _)) => !cert_is_expired(&chain[0]),
         None => false,

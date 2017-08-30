@@ -1,7 +1,10 @@
+#![feature(proc_macro, conservative_impl_trait, generators)]
+
 extern crate acme_client;
 extern crate base64;
 extern crate byteorder;
 extern crate chrono;
+extern crate futures_await as futures;
 extern crate hex;
 extern crate hyper;
 extern crate openssl;

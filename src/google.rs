@@ -1,8 +1,9 @@
 use super::common::Log;
 
+use futures::prelude::*;
+
 use hyper;
 use serde_json;
-use std::io::Read;
 
 
 const LOG_LIST_URL: &'static str = "https://www.gstatic.com/ct/log_list/log_list.json";
@@ -26,11 +27,14 @@ struct LogsResponse {
     operators: Vec<LogsResponseOperators>,
 }
 
-pub fn fetch_trusted_ct_logs(http_client: &hyper::Client) -> Vec<Log> {
-    let response = http_client.get(LOG_LIST_URL).send().unwrap();
-    // Limit the response to 10MB at most, to be resillient to DoS.
-    let logs_response: LogsResponse = serde_json::from_reader(response.take(10 * 1024 * 1024))
-        .unwrap();
+#[async]
+pub fn fetch_trusted_ct_logs<C: hyper::client::Connect>(
+    http_client: &hyper::Client<C>,
+) -> Vec<Log> {
+    let response = await!(http_client.get(LOG_LIST_URL.parse().unwrap())).unwrap();
+    // TODO: Limit the response to 10MB at most, to be resillient to DoS.
+    let body = await!(response.body().concat2()).unwrap();
+    let logs_response: LogsResponse = serde_json::from_slice(&body).unwrap();
 
     let google_id = logs_response
         .operators
