@@ -49,7 +49,7 @@ fn submit_to_log<'a, C: hyper::client::Connect>(
     http_client: &hyper::Client<C>,
     log: &'a Log,
     payload: &[u8],
-) -> Option<(&'a Log, SignedCertificateTimestamp)> {
+) -> Result<(&'a Log, SignedCertificateTimestamp), ()> {
     let mut url = "https://".to_string() + &log.url;
     if !url.ends_with('/') {
         url += "/";
@@ -63,19 +63,19 @@ fn submit_to_log<'a, C: hyper::client::Connect>(
     let response = match await!(http_client.request(request)) {
         Ok(r) => r,
         // TODO: maybe not all of these should be silently ignored.
-        Err(_) => return None,
+        Err(_) => return Err(()),
     };
 
     // 400, 403, and probably some others generally indicate a log doesn't accept certs from this
     // root, or that the log isn't accepting new submissions. Server errors mean there's nothing we
     // can do.
     if response.status().is_client_error() || response.status().is_server_error() {
-        return None;
+        return Err(());
     }
 
     // TODO: Limt the response to 10MB (well above what would ever be needed) to be resilient to
     // DoS in the face of a dumb or malicious log.
-    Some((
+    Ok((
         log,
         serde_json::from_slice(
             &await!(response.body().concat2()).unwrap(),
@@ -93,14 +93,16 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
     http_client: &hyper::Client<C>,
     logs: &'a [Log],
     cert: &[Vec<u8>],
-) -> Vec<(&'a Log, SignedCertificateTimestamp)> {
+) -> Result<Vec<(&'a Log, SignedCertificateTimestamp)>, ()> {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
     }).unwrap();
 
-    await!(futures::future::join_all(
-        logs.iter()
-            .map(|log| { submit_to_log(http_client, log, &payload); })
-            .collect(),
-    )).unwrap()
+    Ok(
+        await!(futures::future::join_all(
+            logs.iter()
+                .map(|log| { submit_to_log(http_client, log, &payload); })
+                .collect(),
+        )).unwrap(),
+    )
 }
