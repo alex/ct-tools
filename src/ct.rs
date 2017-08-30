@@ -3,9 +3,10 @@ use super::common::Log;
 use base64;
 use byteorder::{BigEndian, WriteBytesExt};
 
+use futures;
 use futures::prelude::*;
 use hyper;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{ParallelIterator};
 use serde_json;
 use std::io::{Read, Write};
 
@@ -44,22 +45,20 @@ impl SignedCertificateTimestamp {
 
 
 #[async]
-fn submit_to_log<C: hyper::client::Connect>(
+fn submit_to_log<'a, C: hyper::client::Connect>(
     http_client: &hyper::Client<C>,
-    url: &str,
+    log: &'a Log,
     payload: &[u8],
-) -> Option<SignedCertificateTimestamp> {
-    let mut url = "https://".to_string() + url;
+) -> Option<(&'a Log, SignedCertificateTimestamp)> {
+    let mut url = "https://".to_string() + &log.url;
     if !url.ends_with('/') {
         url += "/";
     }
     url += "ct/v1/add-chain";
-    let response = http_client
-        .post(&url)
-        .body(hyper::client::Body::BufBody(payload, payload.len()))
-        .header(hyper::header::ContentType::json())
-        .send();
-    let response = match response {
+    let mut request = hyper::Request::new(hyper::Method::Post, url.parse().unwrap());
+    request.headers_mut().set(hyper::header::ContentType::json());
+    request.set_body(payload.to_vec());
+    let response = match await!(http_client.request(request)) {
         Ok(r) => r,
         // TODO: maybe not all of these should be silently ignored.
         Err(_) => return None,
@@ -68,14 +67,14 @@ fn submit_to_log<C: hyper::client::Connect>(
     // 400, 403, and probably some others generally indicate a log doesn't accept certs from this
     // root, or that the log isn't accepting new submissions. Server errors mean there's nothing we
     // can do.
-    if response.status.is_client_error() || response.status.is_server_error() {
+    if response.status().is_client_error() || response.status().is_server_error() {
         return None;
     }
 
-    // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS in
-    // the face of a dumb or malicious log.
+    // TODO: Limt the response to 10MB (well above what would ever be needed) to be resilient to
+    // DoS in the face of a dumb or malicious log.
     Some(
-        serde_json::from_reader(response.take(10 * 1024 * 1024)).unwrap(),
+        (log, serde_json::from_slice(&await!(response.body().concat2()).unwrap()).unwrap()),
     )
 }
 
@@ -94,10 +93,8 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
     }).unwrap();
 
-    logs.par_iter()
-        .filter_map(|log| {
-            let sct = submit_to_log(http_client, &log.url, &payload);
-            sct.map(|s| (log, s))
-        })
-        .collect()
+    await!(futures::future::join_all(logs.iter()
+        .map(|log| {
+            submit_to_log(http_client, log, &payload);
+        }).collect())).unwrap()
 }
