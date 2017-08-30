@@ -16,16 +16,16 @@ clap = "*"
 
 hex = "*"
 
-hyper = ">= 0.11"
-hyper-rustls = ">=0.6"
+hyper = ">=0.11"
+hyper-rustls = "=0.10"
 
 openssl = "*"
 
 rayon = "*"
 
-ring = "*"
+ring = "=0.11"
 
-rustls = { version = ">=0.8", features = ["dangerous_configuration"] }
+rustls = { version = "=0.10", features = ["dangerous_configuration"] }
 
 serde = "*"
 serde_derive = "*"
