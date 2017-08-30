@@ -6,7 +6,7 @@ use byteorder::{BigEndian, WriteBytesExt};
 use futures;
 use futures::prelude::*;
 use hyper;
-use rayon::iter::{ParallelIterator};
+use rayon::iter::ParallelIterator;
 use serde_json;
 use std::io::{Read, Write};
 
@@ -56,7 +56,9 @@ fn submit_to_log<'a, C: hyper::client::Connect>(
     }
     url += "ct/v1/add-chain";
     let mut request = hyper::Request::new(hyper::Method::Post, url.parse().unwrap());
-    request.headers_mut().set(hyper::header::ContentType::json());
+    request.headers_mut().set(
+        hyper::header::ContentType::json(),
+    );
     request.set_body(payload.to_vec());
     let response = match await!(http_client.request(request)) {
         Ok(r) => r,
@@ -73,9 +75,12 @@ fn submit_to_log<'a, C: hyper::client::Connect>(
 
     // TODO: Limt the response to 10MB (well above what would ever be needed) to be resilient to
     // DoS in the face of a dumb or malicious log.
-    Some(
-        (log, serde_json::from_slice(&await!(response.body().concat2()).unwrap()).unwrap()),
-    )
+    Some((
+        log,
+        serde_json::from_slice(
+            &await!(response.body().concat2()).unwrap(),
+        ).unwrap(),
+    ))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -93,8 +98,9 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
     }).unwrap();
 
-    await!(futures::future::join_all(logs.iter()
-        .map(|log| {
-            submit_to_log(http_client, log, &payload);
-        }).collect())).unwrap()
+    await!(futures::future::join_all(
+        logs.iter()
+            .map(|log| { submit_to_log(http_client, log, &payload); })
+            .collect(),
+    )).unwrap()
 }
