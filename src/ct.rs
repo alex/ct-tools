@@ -73,12 +73,13 @@ fn submit_to_log<'a, C: hyper::client::Connect>(
         return Err(());
     }
 
-    // TODO: Limt the response to 10MB (well above what would ever be needed) to be resilient to
-    // DoS in the face of a dumb or malicious log.
+    // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS in
+    // the face of a dumb or malicious log.
     Ok((
         log,
         serde_json::from_slice(
-            &await!(response.body().concat2()).unwrap(),
+            &await!(response.body().take(10 * 1024 * 1024).concat2())
+                .unwrap(),
         ).unwrap(),
     ))
 }

@@ -32,8 +32,8 @@ pub fn fetch_trusted_ct_logs<C: hyper::client::Connect>(
     http_client: &hyper::Client<C>,
 ) -> Result<Vec<Log>, ()> {
     let response = await!(http_client.get(LOG_LIST_URL.parse().unwrap())).unwrap();
-    // TODO: Limit the response to 10MB at most, to be resillient to DoS.
-    let body = await!(response.body().concat2()).unwrap();
+    // Limit the response to 10MB at most, to be resillient to DoS.
+    let body = await!(response.body().take(10 * 1024 * 1024).concat2()).unwrap();
     let logs_response: LogsResponse = serde_json::from_slice(&body).unwrap();
 
     let google_id = logs_response
