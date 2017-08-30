@@ -30,7 +30,7 @@ struct LogsResponse {
 #[async]
 pub fn fetch_trusted_ct_logs<C: hyper::client::Connect>(
     http_client: &hyper::Client<C>,
-) -> Vec<Log> {
+) -> Result<Vec<Log>, ()> {
     let response = await!(http_client.get(LOG_LIST_URL.parse().unwrap())).unwrap();
     // TODO: Limit the response to 10MB at most, to be resillient to DoS.
     let body = await!(response.body().concat2()).unwrap();
@@ -42,7 +42,7 @@ pub fn fetch_trusted_ct_logs<C: hyper::client::Connect>(
         .find(|o| o.name == "Google")
         .map(|o| o.id);
 
-    logs_response
+    Ok(logs_response
         .logs
         .into_iter()
         .filter(|log| log.disqualified_at.is_none())
@@ -53,5 +53,5 @@ pub fn fetch_trusted_ct_logs<C: hyper::client::Connect>(
                 is_google: log.operated_by.contains(&google_id.unwrap()),
             }
         })
-        .collect()
+        .collect())
 }
