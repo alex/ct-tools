@@ -123,7 +123,8 @@ where
         // TODO: intermediates
         let chain = vec![openssl_cert_to_rustls(cert.cert())];
         let signer = openssl_pkey_to_rustls_signer(cert.pkey());
-        *self.active_cert.lock().unwrap() = Some(rustls::sign::CertifiedKey::new(chain, Arc::new(signer)));
+        *self.active_cert.lock().unwrap() =
+            Some(rustls::sign::CertifiedKey::new(chain, Arc::new(signer)));
         self.cert_cache.store_certificate(
             &domains_to_identifier(&self.acme_url, &self.domains),
             std::str::from_utf8(&cert.cert().to_pem().unwrap()).unwrap(),
@@ -140,10 +141,10 @@ where
 
         let chain = vec![openssl_cert_to_rustls(&cert)];
         let signer = openssl_pkey_to_rustls_signer(&pkey);
-        self.sni_challenges.lock().unwrap().insert(z_domain, rustls::sign::CertifiedKey::new(
-            chain,
-            Arc::new(signer),
-        ));
+        self.sni_challenges.lock().unwrap().insert(
+            z_domain,
+            rustls::sign::CertifiedKey::new(chain, Arc::new(signer)),
+        );
     }
 
     fn teardown_sni_challenge(&self, challenge: &acme_client::Challenge) {

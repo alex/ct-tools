@@ -40,7 +40,8 @@ pub fn fetch_trusted_ct_logs<C: hyper::client::Connect>(
         .operators
         .iter()
         .find(|o| o.name == "Google")
-        .map(|o| o.id).unwrap();
+        .map(|o| o.id)
+        .unwrap();
 
     Ok(
         logs_response

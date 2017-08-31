@@ -37,8 +37,7 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
     }
 
     let body = await!(response.body().concat2()).unwrap();
-    let add_chain_request: AddChainRequest =
-        serde_json::from_slice(&body).unwrap();
+    let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
     Ok(
         add_chain_request
             .chain

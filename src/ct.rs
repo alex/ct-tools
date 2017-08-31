@@ -96,12 +96,12 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
 ) -> Result<Vec<(Log, SignedCertificateTimestamp)>, ()> {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
-    }).unwrap().into_boxed_slice();
+    }).unwrap()
+        .into_boxed_slice();
 
     Ok(
-        await!(futures::future::join_all(
-            logs.iter()
-                .map(|log| { submit_to_log(http_client, *log, payload) })
-        )).unwrap(),
+        await!(futures::future::join_all(logs.iter().map(
+            |log| submit_to_log(http_client, *log, payload),
+        ))).unwrap(),
     )
 }
