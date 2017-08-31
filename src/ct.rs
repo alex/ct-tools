@@ -6,9 +6,8 @@ use byteorder::{BigEndian, WriteBytesExt};
 use futures;
 use futures::prelude::*;
 use hyper;
-use rayon::iter::ParallelIterator;
 use serde_json;
-use std::io::{Read, Write};
+use std::io::Write;
 
 
 

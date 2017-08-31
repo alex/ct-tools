@@ -15,7 +15,7 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
         .append_pair("b64cert", &base64::encode(&cert))
         .append_pair("onlyonechain", "Y")
         .finish();
-    let request = hyper::Request::new(
+    let mut request = hyper::Request::new(
         hyper::Method::Post,
         "https://crt.sh/gen-add-chain".parse().unwrap(),
     );
@@ -36,8 +36,9 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
         return Err(());
     }
 
+    let body = await!(response.body().concat2()).unwrap();
     let add_chain_request: AddChainRequest =
-        serde_json::from_slice(&await!(response.body().concat2()).unwrap()).unwrap();
+        serde_json::from_slice(&body).unwrap();
     Ok(
         add_chain_request
             .chain

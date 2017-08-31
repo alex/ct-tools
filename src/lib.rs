@@ -8,7 +8,6 @@ extern crate futures_await as futures;
 extern crate hex;
 extern crate hyper;
 extern crate openssl;
-extern crate rayon;
 extern crate ring;
 extern crate rustls;
 #[macro_use]
