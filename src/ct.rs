@@ -46,7 +46,7 @@ impl SignedCertificateTimestamp {
 fn submit_to_log<'a, C: hyper::client::Connect>(
     http_client: &'a hyper::Client<C>,
     log: &'a Log,
-    payload: &'a [u8],
+    payload: Vec<u8>,
 ) -> impl Future<Item = (&'a Log, SignedCertificateTimestamp), Error = ()> + 'a {
     async_block! {
         let mut url = "https://".to_string() + &log.url;
@@ -58,7 +58,7 @@ fn submit_to_log<'a, C: hyper::client::Connect>(
         request.headers_mut().set(
             hyper::header::ContentType::json(),
         );
-        request.set_body(payload.to_vec());
+        request.set_body(payload);
         let response = match await!(http_client.request(request)) {
             Ok(r) => r,
             // TODO: maybe not all of these should be silently ignored.
@@ -74,12 +74,11 @@ fn submit_to_log<'a, C: hyper::client::Connect>(
 
         // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS
         // in the face of a dumb or malicious log.
+        let body = await!(response.body().take(10 * 1024 * 1024).concat2())
+            .unwrap();
         Ok((
             log,
-            serde_json::from_slice(
-                &await!(response.body().take(10 * 1024 * 1024).concat2())
-                    .unwrap(),
-            ).unwrap(),
+            serde_json::from_slice(&body).unwrap(),
         ))
     }
 }
@@ -101,7 +100,7 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
 
         Ok(
             await!(futures::future::join_all(logs.iter().map(
-                move |log| submit_to_log(&http_client, log, &payload),
+                move |log| submit_to_log(&http_client, log, payload.clone()),
             ))).unwrap(),
         )
     }
