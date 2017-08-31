@@ -8,11 +8,11 @@ use url;
 
 #[async]
 pub fn build_chain_for_cert<C: hyper::client::Connect>(
-    http_client: &hyper::Client<C>,
-    cert: &[u8],
+    http_client: Box<hyper::Client<C>>,
+    cert: Box<[u8]>,
 ) -> Result<Vec<Vec<u8>>, ()> {
     let body = url::form_urlencoded::Serializer::new(String::new())
-        .append_pair("b64cert", &base64::encode(cert))
+        .append_pair("b64cert", &base64::encode(&cert))
         .append_pair("onlyonechain", "Y")
         .finish();
     let request = hyper::Request::new(
@@ -49,12 +49,12 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
 
 #[async]
 pub fn is_cert_logged<C: hyper::client::Connect>(
-    http_client: &hyper::Client<C>,
-    cert: &[u8],
+    http_client: Box<hyper::Client<C>>,
+    cert: Box<[u8]>,
 ) -> Result<bool, ()> {
     let mut request = hyper::Request::new(
         hyper::Method::Get,
-        format!("https://crt.sh/?d={}", sha256_hex(cert))
+        format!("https://crt.sh/?d={}", sha256_hex(&cert))
             .parse()
             .unwrap(),
     );

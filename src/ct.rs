@@ -46,10 +46,10 @@ impl SignedCertificateTimestamp {
 
 #[async]
 fn submit_to_log<'a, C: hyper::client::Connect>(
-    http_client: &hyper::Client<C>,
-    log: &'a Log,
-    payload: &[u8],
-) -> Result<(&'a Log, SignedCertificateTimestamp), ()> {
+    http_client: Box<hyper::Client<C>>,
+    log: Log,
+    payload: Box<[u8]>,
+) -> Result<(Log, SignedCertificateTimestamp), ()> {
     let mut url = "https://".to_string() + &log.url;
     if !url.ends_with('/') {
         url += "/";
@@ -91,19 +91,18 @@ pub struct AddChainRequest {
 
 #[async]
 pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
-    http_client: &hyper::Client<C>,
-    logs: &'a [Log],
-    cert: &[Vec<u8>],
-) -> Result<Vec<(&'a Log, SignedCertificateTimestamp)>, ()> {
+    http_client: Box<hyper::Client<C>>,
+    logs: Box<[Log]>,
+    cert: Box<[Vec<u8>]>,
+) -> Result<Vec<(Log, SignedCertificateTimestamp)>, ()> {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
-    }).unwrap();
+    }).unwrap().into_boxed_slice();
 
     Ok(
         await!(futures::future::join_all(
             logs.iter()
-                .map(|log| { submit_to_log(http_client, log, &payload); })
-                .collect(),
+                .map(|log| { submit_to_log(http_client, *log, payload) })
         )).unwrap(),
     )
 }
