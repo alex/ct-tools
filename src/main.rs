@@ -1,3 +1,5 @@
+#![feature(conservative_impl_trait)]
+
 extern crate base64;
 extern crate clap;
 extern crate hyper;
@@ -14,6 +16,7 @@ extern crate tera;
 extern crate tokio_core;
 extern crate tokio_proto;
 extern crate tokio_rustls;
+extern crate futures;
 
 extern crate ct_tools;
 
@@ -21,6 +24,7 @@ use ct_tools::{crtsh, letsencrypt};
 use ct_tools::common::{Log, sha256_hex};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
+use futures::Future;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::env;
 use std::fs::File;
@@ -133,8 +137,13 @@ struct HttpHandler<C: hyper::client::Connect> {
     logs: Vec<Log>,
 }
 
-impl hyper::server::Handler for HttpHandler {
-    fn handle(&self, request: hyper::server::Request, response: hyper::server::Response) {
+impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
+    type Request = hyper::server::Request;
+    type Response = hyper::server::Response;
+    type Error = hyper::Error;
+    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+
+    fn call(&self, request: hyper::server::Request) -> Self::Future {
         let peer_certs = request
             .ssl::<hyper_rustls::WrappedStream>()
             .unwrap()
@@ -182,14 +191,14 @@ impl hyper::server::Handler for HttpHandler {
         let mut context = tera::Context::new();
         context.add("cert", &rendered_cert);
         context.add("crtsh_url", &crtsh_url);
-        response
-            .send(
+        futures::future::ok(
+            hyper::server::Response::new().with_body(
                 self.templates
                     .render("home.html", &context)
                     .unwrap()
                     .as_bytes(),
-            )
-            .unwrap();
+            ),
+        ).boxed()
     }
 }
 
