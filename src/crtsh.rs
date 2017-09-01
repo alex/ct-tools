@@ -9,7 +9,7 @@ use url;
 pub fn build_chain_for_cert<'a, C: hyper::client::Connect>(
     http_client: &'a hyper::Client<C>,
     cert: &'a [u8],
-) -> impl Future<Item=Vec<Vec<u8>>, Error=()> + 'a {
+) -> impl Future<Item = Vec<Vec<u8>>, Error = ()> + 'a {
     async_block! {
         let body = url::form_urlencoded::Serializer::new(String::new())
             .append_pair("b64cert", &base64::encode(&cert))
@@ -52,7 +52,7 @@ pub fn build_chain_for_cert<'a, C: hyper::client::Connect>(
 pub fn is_cert_logged<'a, C: hyper::client::Connect>(
     http_client: &'a hyper::Client<C>,
     cert: &'a [u8],
-) -> impl Future<Item=bool, Error=()> + 'a {
+) -> impl Future<Item = bool, Error = ()> + 'a {
     async_block! {
         let mut request = hyper::Request::new(
             hyper::Method::Get,

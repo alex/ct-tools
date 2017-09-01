@@ -29,7 +29,7 @@ struct LogsResponse {
 
 pub fn fetch_trusted_ct_logs<'a, C: hyper::client::Connect>(
     http_client: &'a hyper::Client<C>,
-) -> impl Future<Item=Vec<Log>, Error=()> + 'a {
+) -> impl Future<Item = Vec<Log>, Error = ()> + 'a {
     async_block! {
         let response = await!(http_client.get(LOG_LIST_URL.parse().unwrap())).unwrap();
         // Limit the response to 10MB at most, to be resillient to DoS.
