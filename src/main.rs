@@ -149,12 +149,14 @@ impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
 
     fn call(&self, request: hyper::server::Request) -> Self::Future {
         Box::new(async_block! {
-            let peer_certs = request
-                .ssl::<hyper_rustls::WrappedStream>()
-                .unwrap()
-                .to_tls_stream()
-                .get_session()
-                .get_peer_certificates();
+            // TODO:
+            // let peer_certs = request
+            //     .ssl::<hyper_rustls::WrappedStream>()
+            //     .unwrap()
+            //     .to_tls_stream()
+            //     .get_session()
+            //     .get_peer_certificates();
+            let peer_certs: Option<Vec<rustls::Certificate>> = None;
 
             let mut crtsh_url = None;
             if peer_certs.is_some() && request.method() == &hyper::Method::Post {
