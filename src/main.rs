@@ -208,8 +208,8 @@ impl rustls::ClientCertVerifier for NoVerificationCertificateVerifier {
         &self,
         _: &rustls::RootCertStore,
         _: &[rustls::Certificate],
-    ) -> Result<(), rustls::TLSError> {
-        Ok(())
+    ) -> Result<rustls::ClientCertVerified, rustls::TLSError> {
+        Ok(rustls::ClientCertVerified::assertion())
     }
 }
 
