@@ -1,4 +1,4 @@
-#![feature(conservative_impl_trait)]
+#![feature(conservative_impl_trait, generators)]
 
 extern crate base64;
 extern crate clap;
@@ -16,7 +16,8 @@ extern crate tera;
 extern crate tokio_core;
 extern crate tokio_proto;
 extern crate tokio_rustls;
-extern crate futures;
+extern crate futures_await as futures;
+
 
 extern crate ct_tools;
 
@@ -24,14 +25,13 @@ use ct_tools::{crtsh, letsencrypt};
 use ct_tools::common::{Log, sha256_hex};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
-use futures::Future;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use futures::prelude::*;
+use rayon::iter::ParallelIterator;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
-use std::time::Duration;
 
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
@@ -111,10 +111,12 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
 }
 
 fn check(paths: clap::Values) {
-    let http_client = new_http_client();
+    let core = tokio_core::reactor::Core::new().unwrap();
+    let http_client = new_http_client(&core.handle());
 
     let paths = paths.collect::<Vec<_>>();
-    paths.par_iter().for_each(|path| {
+    // TODO: parallelism
+    for path in paths {
         let mut contents = Vec::new();
         File::open(path)
             .unwrap()
@@ -123,13 +125,14 @@ fn check(paths: clap::Values) {
 
         let chain = pems_to_chain(&contents);
 
-        let is_logged = crtsh::is_cert_logged(&http_client, &chain[0]);
+        let is_logged = core.run(crtsh::is_cert_logged(&http_client, &chain[0]))
+            .unwrap();
         if is_logged {
             println!("{} was already logged", path);
         } else {
             println!("{} has not been logged", path);
         }
-    });
+    }
 }
 
 struct HttpHandler<C: hyper::client::Connect> {
@@ -145,61 +148,65 @@ impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, request: hyper::server::Request) -> Self::Future {
-        let peer_certs = request
-            .ssl::<hyper_rustls::WrappedStream>()
-            .unwrap()
-            .to_tls_stream()
-            .get_session()
-            .get_peer_certificates();
+        Box::new(async_block! {
+            let peer_certs = request
+                .ssl::<hyper_rustls::WrappedStream>()
+                .unwrap()
+                .to_tls_stream()
+                .get_session()
+                .get_peer_certificates();
 
-        let mut crtsh_url = None;
-        if peer_certs.is_some() && request.method() == hyper::Method::Post {
-            if let Some(chain) = crtsh::build_chain_for_cert(
-                &self.http_client,
-                &peer_certs.as_ref().unwrap()[0].0,
-            )
-            {
-                let scts = submit_cert_to_logs(&self.http_client, &self.logs, &chain);
-                if !scts.is_empty() {
-                    crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
-                    println!("Successfully submitted: {}", sha256_hex(&chain[0]));
+            let mut crtsh_url = None;
+            if peer_certs.is_some() && request.method() == &hyper::Method::Post {
+                if let Ok(chain) = await!(crtsh::build_chain_for_cert(
+                    &self.http_client,
+                    &peer_certs.as_ref().unwrap()[0].0,
+                ))
+                {
+                    let scts = await!(submit_cert_to_logs(
+                        &self.http_client, &self.logs, &chain)).unwrap();
+                    if !scts.is_empty() {
+                        crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
+                        println!("Successfully submitted: {}", sha256_hex(&chain[0]));
+                    }
                 }
             }
-        }
 
-        let rendered_cert = peer_certs.map(|chain| {
-            let mut process = Command::new("openssl")
-                .arg("x509")
-                .arg("-text")
-                .arg("-noout")
-                .arg("-inform")
-                .arg("der")
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-                .unwrap();
-            process
-                .stdin
-                .as_mut()
-                .unwrap()
-                .write_all(&chain[0].0)
-                .unwrap();
-            let out = process.wait_with_output().unwrap();
-            String::from_utf8_lossy(&out.stdout).into_owned()
-        });
-
-        let mut context = tera::Context::new();
-        context.add("cert", &rendered_cert);
-        context.add("crtsh_url", &crtsh_url);
-        futures::future::ok(
-            hyper::server::Response::new().with_body(
-                self.templates
-                    .render("home.html", &context)
+            let rendered_cert = peer_certs.map(|chain| {
+                let mut process = Command::new("openssl")
+                    .arg("x509")
+                    .arg("-text")
+                    .arg("-noout")
+                    .arg("-inform")
+                    .arg("der")
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .unwrap();
+                process
+                    .stdin
+                    .as_mut()
                     .unwrap()
-                    .as_bytes(),
-            ),
-        ).boxed()
+                    .write_all(&chain[0].0)
+                    .unwrap();
+                // TODO: async
+                let out = process.wait_with_output().unwrap();
+                String::from_utf8_lossy(&out.stdout).into_owned()
+            });
+
+            let mut context = tera::Context::new();
+            context.add("cert", &rendered_cert);
+            context.add("crtsh_url", &crtsh_url);
+            Ok(
+                hyper::server::Response::new().with_body(
+                    self.templates
+                        .render("home.html", &context)
+                        .unwrap()
+                        .as_bytes(),
+                ),
+            )
+        })
     }
 }
 
@@ -248,7 +255,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             letsencrypt::DiskCache::new(env::home_dir().unwrap().join(".ct-tools").join(
                 "certificates",
             ));
-        tls_config.cert_resolver = Box::new(letsencrypt::AutomaticCertResolver::new(
+        tls_config.cert_resolver = Arc::new(letsencrypt::AutomaticCertResolver::new(
             letsencrypt_url,
             vec![domain.unwrap().to_string()],
             cert_cache,
@@ -259,15 +266,13 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     // Disable certificate verification. In any normal context, this would be horribly insecure!
     // However, all we're doing is taking the certs and then turning around and submitting them to
     // CT logs, so it doesn't matter if they're verified.
-    tls_config.dangerous().set_certificate_verifier(Box::new(
+    tls_config.dangerous().set_certificate_verifier(Arc::new(
         NoVerificationCertificateVerifier,
     ));
 
     let core = tokio_core::reactor::Core::new().unwrap();
     let mut http_client = new_http_client(&core.handle());
     let logs = core.run(fetch_trusted_ct_logs(&http_client)).unwrap();
-    http_client.set_write_timeout(Some(Duration::from_secs(5)));
-    http_client.set_read_timeout(Some(Duration::from_secs(5)));
 
     let addr = if local_dev {
         "127.0.0.1:1337"
