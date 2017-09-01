@@ -38,13 +38,14 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
 
     let body = await!(response.body().concat2()).unwrap();
     let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
-    Ok(
+    let res = Ok(
         add_chain_request
             .chain
             .iter()
             .map(|c| base64::decode(c).unwrap())
             .collect(),
-    )
+    );
+    res
 }
 
 #[async]
@@ -62,7 +63,8 @@ pub fn is_cert_logged<C: hyper::client::Connect>(
         hyper::header::Connection::keep_alive(),
     );
     let response = await!(http_client.request(request)).unwrap();
-    Ok(response.status() == hyper::StatusCode::Ok)
+    let res = Ok(response.status() == hyper::StatusCode::Ok);
+    res
 }
 
 pub fn url_for_cert(cert: &[u8]) -> String {
