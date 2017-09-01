@@ -17,6 +17,7 @@ extern crate tokio_core;
 extern crate tokio_proto;
 extern crate tokio_rustls;
 extern crate futures_await as futures;
+extern crate tokio_process;
 
 
 extern crate ct_tools;
@@ -32,7 +33,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
-
+use tokio_process::CommandExt;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
     pem::parse_many(data)
@@ -136,6 +137,7 @@ fn check(paths: clap::Values) {
 }
 
 struct HttpHandler<C: hyper::client::Connect> {
+    handle: tokio_core::reactor::Handle,
     templates: tera::Tera,
     http_client: hyper::Client<C>,
     logs: Vec<Log>,
@@ -174,28 +176,29 @@ impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
                 }
             }
 
-            let rendered_cert = peer_certs.map(|chain| {
-                let mut process = Command::new("openssl")
-                    .arg("x509")
-                    .arg("-text")
-                    .arg("-noout")
-                    .arg("-inform")
-                    .arg("der")
-                    .stdin(Stdio::piped())
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())
-                    .spawn()
-                    .unwrap();
-                process
-                    .stdin
-                    .as_mut()
-                    .unwrap()
-                    .write_all(&chain[0].0)
-                    .unwrap();
-                // TODO: async
-                let out = process.wait_with_output().unwrap();
-                String::from_utf8_lossy(&out.stdout).into_owned()
-            });
+            let rendered_cert = match peer_certs {
+                Some(chain) => {
+                    let mut process = Command::new("openssl")
+                        .arg("x509")
+                        .arg("-text")
+                        .arg("-noout")
+                        .arg("-inform")
+                        .arg("der")
+                        .stdin(Stdio::piped())
+                        .stdout(Stdio::piped())
+                        .stderr(Stdio::piped())
+                        .spawn_async(&self.handle).unwrap();
+                    process
+                        .stdin()
+                        .as_mut()
+                        .unwrap()
+                        .write_all(&chain[0].0)
+                        .unwrap();
+                    let out = await!(process.wait_with_output()).unwrap();
+                    Some(String::from_utf8_lossy(&out.stdout).into_owned())
+                },
+                None => None
+            };
 
             let mut context = tera::Context::new();
             context.add("cert", &rendered_cert);
