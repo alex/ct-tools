@@ -11,6 +11,7 @@ extern crate rustls;
 extern crate serde_json;
 #[macro_use]
 extern crate tera;
+extern crate tokio_core;
 
 extern crate ct_tools;
 
@@ -35,13 +36,13 @@ fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
         .collect()
 }
 
-fn new_http_client() -> hyper::Client {
-    hyper::Client::with_connector(hyper::client::pool::Pool::with_connector(
-        hyper::client::pool::Config::default(),
-        hyper::net::HttpsConnector::new(
-            hyper_rustls::TlsClient::new(),
-        ),
-    ))
+fn new_http_client(
+    handle: &tokio_core::reactor::Handle,
+) -> hyper::Client<hyper_rustls::HttpsConnector> {
+    // TODO: pool?
+    hyper::Client::configure()
+        .connector(hyper_rustls::HttpsConnector::new(4, handle))
+        .build(handle)
 }
 
 fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
@@ -124,9 +125,9 @@ fn check(paths: clap::Values) {
     });
 }
 
-struct HttpHandler {
+struct HttpHandler<C: hyper::client::Connect> {
     templates: tera::Tera,
-    http_client: hyper::Client,
+    http_client: hyper::Client<C>,
     logs: Vec<Log>,
 }
 
@@ -140,7 +141,7 @@ impl hyper::server::Handler for HttpHandler {
             .get_peer_certificates();
 
         let mut crtsh_url = None;
-        if peer_certs.is_some() && request.method == hyper::method::Method::Post {
+        if peer_certs.is_some() && request.method() == hyper::Method::Post {
             if let Some(chain) = crtsh::build_chain_for_cert(
                 &self.http_client,
                 &peer_certs.as_ref().unwrap()[0].0,
