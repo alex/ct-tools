@@ -7,6 +7,8 @@ authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
 futures = "*"
 futures-await = { git = "https://github.com/alexcrichton/futures-await" }
 tokio-core = "*"
+tokio-proto = "*"
+tokio-rustls = "*"
 
 acme-client = "*"
 

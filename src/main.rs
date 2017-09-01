@@ -12,6 +12,8 @@ extern crate serde_json;
 #[macro_use]
 extern crate tera;
 extern crate tokio_core;
+extern crate tokio_proto;
+extern crate tokio_rustls;
 
 extern crate ct_tools;
 
@@ -250,29 +252,33 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     tls_config.dangerous().set_certificate_verifier(Box::new(
         NoVerificationCertificateVerifier,
     ));
-    let tls_server = hyper_rustls::TlsServer { cfg: Arc::new(tls_config) };
 
-    let mut http_client = new_http_client();
-    let logs = fetch_trusted_ct_logs(&http_client);
+    let core = tokio_core::reactor::Core::new().unwrap();
+    let mut http_client = new_http_client(&core.handle());
+    let logs = core.run(fetch_trusted_ct_logs(&http_client)).unwrap();
     http_client.set_write_timeout(Some(Duration::from_secs(5)));
     http_client.set_read_timeout(Some(Duration::from_secs(5)));
-    let handler = HttpHandler {
-        templates: compile_templates!("templates/*"),
-        http_client: http_client,
-        logs: logs,
-    };
 
     let addr = if local_dev {
         "127.0.0.1:1337"
     } else {
         "0.0.0.0:443"
     };
+
+    let tls_server =
+        tokio_rustls::proto::Server::new(hyper::server::Http::new(), Arc::new(tls_config));
+    let tcp_server = tokio_proto::TcpServer::new(tls_server, addr.parse().unwrap());
+    // If there aren't at least two threads, the Let's Encrypt integration will deadlock.
+    tcp_server.threads(16);
+
     println!("Listening on https://{} ...", addr);
-    hyper::Server::https(addr, tls_server)
-        .unwrap()
-        // If there aren't at least two threads, the Let's Encrypt integration will deadlock.
-        .handle_threads(handler, 16)
-        .unwrap();
+    tcp_server.serve(|| {
+        Ok(HttpHandler {
+            templates: compile_templates!("templates/*"),
+            http_client: http_client,
+            logs: logs,
+        })
+    });
 }
 
 fn main() {
