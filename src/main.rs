@@ -52,8 +52,8 @@ fn new_http_client(
 }
 
 fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
-    let mut http_client = new_http_client();
-    http_client.set_read_timeout(Some(Duration::from_secs(15)));
+    let core = tokio_core::reactor::Core::new().unwrap();
+    let mut http_client = new_http_client(&core.handle());
 
     let logs = match log_urls {
         Some(urls) => {
@@ -65,7 +65,7 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
                 }
             }).collect()
         }
-        None => fetch_trusted_ct_logs(&http_client),
+        None => core.run(fetch_trusted_ct_logs(&http_client)).unwrap(),
     };
 
     for path in paths {
@@ -82,15 +82,16 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
             // TODO: There's got to be some way to do this ourselves, instead of using crt.sh as a
             // glorified AIA chaser.
             println!("Only one certificate in chain, using crt.sh to build a full chain ...");
-            chain = match crtsh::build_chain_for_cert(&http_client, &chain[0]) {
-                Some(c) => c,
-                None => {
+            chain = match core.run(crtsh::build_chain_for_cert(&http_client, &chain[0])) {
+                Ok(c) => c,
+                Err(()) => {
                     println!("Unable to build a chain");
                     continue;
                 }
             }
         }
-        let scts = submit_cert_to_logs(&http_client, &logs, &chain);
+        let scts = core.run(submit_cert_to_logs(&http_client, &logs, &chain))
+            .unwrap();
 
         if !scts.is_empty() {
             println!(
