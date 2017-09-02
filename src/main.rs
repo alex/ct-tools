@@ -165,8 +165,7 @@ impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
                 if let Ok(chain) = await!(crtsh::build_chain_for_cert(
                     &self.http_client,
                     &peer_certs.as_ref().unwrap()[0].0,
-                ))
-                {
+                )) {
                     let scts = await!(submit_cert_to_logs(
                         &self.http_client, &self.logs, &chain)).unwrap();
                     if !scts.is_empty() {
