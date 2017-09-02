@@ -306,6 +306,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         })
     });
     tcp_server.with_handle(move |handle| {
+        // TODO: this doesn't seem right...
         let remote = handle.remote().clone();
         let new_service = new_service.clone();
         move || { new_service(remote.handle().unwrap()) }
