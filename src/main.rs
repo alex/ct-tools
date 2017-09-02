@@ -79,7 +79,8 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
             // TODO: There's got to be some way to do this ourselves, instead of using crt.sh as a
             // glorified AIA chaser.
             println!("Only one certificate in chain, using crt.sh to build a full chain ...");
-            chain = match core.run(crtsh::build_chain_for_cert(&http_client, &chain[0])) {
+            let new_chain = core.run(crtsh::build_chain_for_cert(&http_client, &chain[0]));
+            chain = match new_chain {
                 Ok(c) => c,
                 Err(()) => {
                     println!("Unable to build a chain");
@@ -159,8 +160,7 @@ fn handle_request<'a, C: hyper::client::Connect>(
     let mut crtsh_url = None;
     if peer_certs.is_some() && request.method() == &hyper::Method::Post {
         if let Ok(chain) = await!(crtsh::build_chain_for_cert(
-            &http_client,
-            &peer_certs.as_ref().unwrap()[0].0,
+            &http_client, &peer_certs.as_ref().unwrap()[0].0,
         ))
         {
             let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain)).unwrap();
