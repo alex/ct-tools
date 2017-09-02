@@ -300,16 +300,18 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     tcp_server.threads(16);
 
     println!("Listening on https://{} ...", addr);
+    let new_service = Arc::new(|&handle| {
+        let http_client = new_http_client(&handle);
+        Ok(HttpHandler {
+            templates: templates.clone(),
+            http_client: Arc::new(http_client),
+            logs: logs.clone(),
+            handle: handle.clone(),
+        })
+    });
     tcp_server.with_handle(|handle| {
-        move || {
-            let http_client = new_http_client(&handle);
-            Ok(HttpHandler {
-                templates: templates.clone(),
-                http_client: Arc::new(http_client),
-                logs: logs.clone(),
-                handle: handle.clone(),
-            })
-        }
+        let new_service = new_service.clone();
+        move || { new_service(handle) }
     });
 }
 
