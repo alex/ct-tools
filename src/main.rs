@@ -191,7 +191,8 @@ fn handle_request<'a, C: hyper::client::Connect>(
                 .write_all(&chain[0].0)
                 .unwrap();
             let out = await!(process.wait_with_output()).unwrap();
-            Some(String::from_utf8_lossy(&out.stdout).into_owned())
+            let res = Some(String::from_utf8_lossy(&out.stdout).into_owned());
+            res
         }
         None => None,
     };
