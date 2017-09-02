@@ -28,8 +28,6 @@ hyper-rustls = ">=0.11"
 
 openssl = "*"
 
-rayon = "*"
-
 ring = ">=0.12"
 
 rustls = { version = ">=0.11", features = ["dangerous_configuration"] }

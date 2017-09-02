@@ -7,10 +7,7 @@ extern crate hyper_rustls;
 extern crate pem;
 #[macro_use]
 extern crate prettytable;
-extern crate rayon;
-extern crate ring;
 extern crate rustls;
-extern crate serde_json;
 #[macro_use]
 extern crate tera;
 extern crate tokio_core;
@@ -27,7 +24,6 @@ use ct_tools::common::{Log, sha256_hex};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::fetch_trusted_ct_logs;
 use futures::prelude::*;
-use rayon::iter::ParallelIterator;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -53,7 +49,7 @@ fn new_http_client(
 }
 
 fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
-    let core = tokio_core::reactor::Core::new().unwrap();
+    let mut core = tokio_core::reactor::Core::new().unwrap();
     let mut http_client = new_http_client(&core.handle());
 
     let logs = match log_urls {
@@ -112,7 +108,7 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
 }
 
 fn check(paths: clap::Values) {
-    let core = tokio_core::reactor::Core::new().unwrap();
+    let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
 
     let paths = paths.collect::<Vec<_>>();
@@ -217,7 +213,7 @@ impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
         let templates = self.templates.clone();
         let http_client = self.http_client.clone();
         let logs = self.logs.clone();
-        let handle = self.handle;
+        let handle = self.handle.clone();
         handle_request(request, templates, http_client, logs, handle)
     }
 }
@@ -282,7 +278,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         NoVerificationCertificateVerifier,
     ));
 
-    let core = tokio_core::reactor::Core::new().unwrap();
+    let mut core = tokio_core::reactor::Core::new().unwrap();
     let mut http_client = new_http_client(&core.handle());
     let logs = Arc::new(core.run(fetch_trusted_ct_logs(&http_client)).unwrap());
     let templates = Arc::new(compile_templates!("templates/*"));
@@ -295,23 +291,24 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
 
     let tls_server =
         tokio_rustls::proto::Server::new(hyper::server::Http::new(), Arc::new(tls_config));
-    let tcp_server = tokio_proto::TcpServer::new(tls_server, addr.parse().unwrap());
+    let mut tcp_server = tokio_proto::TcpServer::new(tls_server, addr.parse().unwrap());
     // If there aren't at least two threads, the Let's Encrypt integration will deadlock.
     tcp_server.threads(16);
 
     println!("Listening on https://{} ...", addr);
-    let new_service = Arc::new(|&handle| {
+    let new_service = Arc::new(move |handle| {
         let http_client = new_http_client(&handle);
         Ok(HttpHandler {
             templates: templates.clone(),
             http_client: Arc::new(http_client),
             logs: logs.clone(),
-            handle: handle.clone(),
+            handle: handle,
         })
     });
-    tcp_server.with_handle(|handle| {
+    tcp_server.with_handle(move |handle| {
+        let remote = handle.remote().clone();
         let new_service = new_service.clone();
-        move || { new_service(handle) }
+        move || { new_service(remote.handle().unwrap()) }
     });
 }
 
