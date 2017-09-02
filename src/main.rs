@@ -140,7 +140,7 @@ struct HttpHandler<C: hyper::client::Connect> {
     logs: Arc<Vec<Log>>,
 }
 
-#[async(boxed)]
+#[async]
 fn handle_request<C: hyper::client::Connect>(
     request: hyper::server::Request,
     templates: Arc<tera::Tera>,
@@ -214,7 +214,7 @@ impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
         let http_client = self.http_client.clone();
         let logs = self.logs.clone();
         let handle = self.handle.clone();
-        handle_request(request, templates, http_client, logs, handle)
+        Box::new(handle_request(request, templates, http_client, logs, handle))
     }
 }
 
