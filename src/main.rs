@@ -1,4 +1,4 @@
-#![feature(conservative_impl_trait, generators)]
+#![feature(conservative_impl_trait, generators, proc_macro)]
 
 extern crate base64;
 extern crate clap;
@@ -138,9 +138,73 @@ fn check(paths: clap::Values) {
 
 struct HttpHandler<C: hyper::client::Connect> {
     handle: tokio_core::reactor::Handle,
-    templates: tera::Tera,
-    http_client: hyper::Client<C>,
-    logs: Vec<Log>,
+    templates: Arc<tera::Tera>,
+    http_client: Arc<hyper::Client<C>>,
+    logs: Arc<Vec<Log>>,
+}
+
+#[async(boxed)]
+fn handle_request<'a, C: hyper::client::Connect>(
+    request: hyper::server::Request,
+    templates: Arc<tera::Tera>,
+    http_client: Arc<hyper::Client<C>>,
+    logs: Arc<Vec<Log>>,
+    handle: tokio_core::reactor::Handle,
+) -> Result<hyper::server::Response, hyper::Error> {
+    // TODO:
+    // let peer_certs = request
+    //     .ssl::<hyper_rustls::WrappedStream>()
+    //     .unwrap()
+    //     .to_tls_stream()
+    //     .get_session()
+    //     .get_peer_certificates();
+    let peer_certs: Option<Vec<rustls::Certificate>> = None;
+
+    let mut crtsh_url = None;
+    if peer_certs.is_some() && request.method() == &hyper::Method::Post {
+        if let Ok(chain) = await!(crtsh::build_chain_for_cert(
+            &http_client,
+            &peer_certs.as_ref().unwrap()[0].0,
+        ))
+        {
+            let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain)).unwrap();
+            if !scts.is_empty() {
+                crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
+                println!("Successfully submitted: {}", sha256_hex(&chain[0]));
+            }
+        }
+    }
+
+    let rendered_cert = match peer_certs {
+        Some(chain) => {
+            let mut process = Command::new("openssl")
+                .arg("x509")
+                .arg("-text")
+                .arg("-noout")
+                .arg("-inform")
+                .arg("der")
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn_async(&handle)
+                .unwrap();
+            process
+                .stdin()
+                .as_mut()
+                .unwrap()
+                .write_all(&chain[0].0)
+                .unwrap();
+            let out = await!(process.wait_with_output()).unwrap();
+            Some(String::from_utf8_lossy(&out.stdout).into_owned())
+        }
+        None => None,
+    };
+
+    let mut context = tera::Context::new();
+    context.add("cert", &rendered_cert);
+    context.add("crtsh_url", &crtsh_url);
+    let body = templates.render("home.html", &context).unwrap().as_bytes();
+    Ok(hyper::server::Response::new().with_body(body))
 }
 
 impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
@@ -150,67 +214,11 @@ impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, request: hyper::server::Request) -> Self::Future {
-        Box::new(async_block! {
-            // TODO:
-            // let peer_certs = request
-            //     .ssl::<hyper_rustls::WrappedStream>()
-            //     .unwrap()
-            //     .to_tls_stream()
-            //     .get_session()
-            //     .get_peer_certificates();
-            let peer_certs: Option<Vec<rustls::Certificate>> = None;
-
-            let mut crtsh_url = None;
-            if peer_certs.is_some() && request.method() == &hyper::Method::Post {
-                if let Ok(chain) = await!(crtsh::build_chain_for_cert(
-                    &self.http_client,
-                    &peer_certs.as_ref().unwrap()[0].0,
-                )) {
-                    let scts = await!(submit_cert_to_logs(
-                        &self.http_client, &self.logs, &chain)).unwrap();
-                    if !scts.is_empty() {
-                        crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
-                        println!("Successfully submitted: {}", sha256_hex(&chain[0]));
-                    }
-                }
-            }
-
-            let rendered_cert = match peer_certs {
-                Some(chain) => {
-                    let mut process = Command::new("openssl")
-                        .arg("x509")
-                        .arg("-text")
-                        .arg("-noout")
-                        .arg("-inform")
-                        .arg("der")
-                        .stdin(Stdio::piped())
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::piped())
-                        .spawn_async(&self.handle).unwrap();
-                    process
-                        .stdin()
-                        .as_mut()
-                        .unwrap()
-                        .write_all(&chain[0].0)
-                        .unwrap();
-                    let out = await!(process.wait_with_output()).unwrap();
-                    Some(String::from_utf8_lossy(&out.stdout).into_owned())
-                },
-                None => None
-            };
-
-            let mut context = tera::Context::new();
-            context.add("cert", &rendered_cert);
-            context.add("crtsh_url", &crtsh_url);
-            Ok(
-                hyper::server::Response::new().with_body(
-                    self.templates
-                        .render("home.html", &context)
-                        .unwrap()
-                        .as_bytes(),
-                ),
-            )
-        })
+        let templates = self.templates.clone();
+        let http_client = self.http_client.clone();
+        let logs = self.logs.clone();
+        let handle = self.handle;
+        handle_request(request, templates, http_client, logs, handle)
     }
 }
 
@@ -276,7 +284,8 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
 
     let core = tokio_core::reactor::Core::new().unwrap();
     let mut http_client = new_http_client(&core.handle());
-    let logs = core.run(fetch_trusted_ct_logs(&http_client)).unwrap();
+    let logs = Arc::new(core.run(fetch_trusted_ct_logs(&http_client)).unwrap());
+    let templates = Arc::new(compile_templates!("templates/*"));
 
     let addr = if local_dev {
         "127.0.0.1:1337"
@@ -291,11 +300,13 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     tcp_server.threads(16);
 
     println!("Listening on https://{} ...", addr);
-    tcp_server.serve(|| {
+    tcp_server.with_handle(move |handle| {
+        let http_client = new_http_client(&handle);
         Ok(HttpHandler {
-            templates: compile_templates!("templates/*"),
-            http_client: http_client,
-            logs: logs,
+            templates: templates.clone(),
+            http_client: Arc::new(http_client),
+            logs: logs.clone(),
+            handle: handle.clone(),
         })
     });
 }
