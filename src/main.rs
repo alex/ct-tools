@@ -141,7 +141,7 @@ struct HttpHandler<C: hyper::client::Connect> {
 }
 
 #[async(boxed)]
-fn handle_request<'a, C: hyper::client::Connect>(
+fn handle_request<C: hyper::client::Connect>(
     request: hyper::server::Request,
     templates: Arc<tera::Tera>,
     http_client: Arc<hyper::Client<C>>,
