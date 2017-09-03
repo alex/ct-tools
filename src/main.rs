@@ -162,9 +162,10 @@ fn handle_request<C: hyper::client::Connect>(
     match peer_certs {
         Some(peer_chain) => {
             if request.method() == &hyper::Method::Post {
-                if let Ok(chain) = await!(crtsh::build_chain_for_cert(
-                    &http_client, &peer_chain[0].0,
-                )) {
+                if let Ok(chain) = await!(
+                    crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)
+                )
+                {
                     let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain)).unwrap();
                     if !scts.is_empty() {
                         crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
@@ -192,7 +193,7 @@ fn handle_request<C: hyper::client::Connect>(
                 .unwrap();
             let out = await!(process.wait_with_output()).unwrap();
             rendered_cert = Some(String::from_utf8_lossy(&out.stdout).into_owned());
-        },
+        }
         None => {}
     }
 
@@ -214,7 +215,13 @@ impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
         let http_client = self.http_client.clone();
         let logs = self.logs.clone();
         let handle = self.handle.clone();
-        Box::new(handle_request(request, templates, http_client, logs, handle))
+        Box::new(handle_request(
+            request,
+            templates,
+            http_client,
+            logs,
+            handle,
+        ))
     }
 }
 
@@ -309,7 +316,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         // TODO: this doesn't seem right...
         let remote = handle.remote().clone();
         let new_service = new_service.clone();
-        move || { new_service(remote.handle().unwrap()) }
+        move || new_service(remote.handle().unwrap())
     });
 }
 
