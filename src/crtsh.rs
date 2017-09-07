@@ -45,6 +45,7 @@ pub fn build_chain_for_cert<'a, C: hyper::client::Connect>(
                 .map(|c| base64::decode(c).unwrap())
                 .collect(),
         );
+        // TODO: lifetime issue in rustc's generator impl
         res
     }
 }
@@ -65,6 +66,7 @@ pub fn is_cert_logged<'a, C: hyper::client::Connect>(
         );
         let response = await!(http_client.request(request)).unwrap();
         let res = Ok(response.status() == hyper::StatusCode::Ok);
+        // TODO: lifetime issue in rustc's generator impl
         res
     }
 }

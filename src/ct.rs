@@ -47,7 +47,7 @@ fn submit_to_log<'a, C: hyper::client::Connect>(
     http_client: &'a hyper::Client<C>,
     log: &'a Log,
     payload: Vec<u8>,
-) -> impl Future<Item = (&'a Log, SignedCertificateTimestamp), Error = ()> + 'a {
+) -> impl Future<Item = SignedCertificateTimestamp, Error = ()> + 'a {
     async_block! {
         let mut url = "https://".to_string() + &log.url;
         if !url.ends_with('/') {
@@ -76,10 +76,10 @@ fn submit_to_log<'a, C: hyper::client::Connect>(
         // in the face of a dumb or malicious log.
         let body = await!(response.body().take(10 * 1024 * 1024).concat2())
             .unwrap();
-        let res = Ok((
-            log,
-            serde_json::from_slice(&body).unwrap(),
-        ));
+        let res = Ok(
+            serde_json::from_slice(&body).unwrap()
+        );
+        // TODO: lifetime issue in rustc's generator impl
         res
     }
 }
@@ -94,15 +94,16 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
     logs: &'a [Log],
     cert: &'a [Vec<u8>],
 ) -> impl Future<Item = Vec<(&'a Log, SignedCertificateTimestamp)>, Error = ()> + 'a {
-    async_block! {
-        let payload = serde_json::to_vec(&AddChainRequest {
-            chain: cert.iter().map(|r| base64::encode(r)).collect(),
-        }).unwrap();
+    let payload = serde_json::to_vec(&AddChainRequest {
+        chain: cert.iter().map(|r| base64::encode(r)).collect(),
+    }).unwrap();
 
-        Ok(
-            await!(futures::future::join_all(logs.iter().map(
-                move |log| submit_to_log(&http_client, log, payload.clone()),
-            ))).unwrap(),
-        )
-    }
+    let futures = logs.iter().map(move |log| {
+        async_block! {
+            let sct = await!(submit_to_log(&http_client, log, payload.clone()))?;
+            Ok((log, sct))
+        }
+    });
+
+    futures::future::join_all(futures)
 }
