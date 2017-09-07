@@ -99,8 +99,9 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
     }).unwrap();
 
     let futures = logs.iter().map(move |log| {
+        let payload = payload.clone();
         async_block! {
-            let sct = await!(submit_to_log(&http_client, log, payload.clone()))?;
+            let sct = await!(submit_to_log(&http_client, log, payload))?;
             Ok((log, sct))
         }
     });
