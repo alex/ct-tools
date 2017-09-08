@@ -43,23 +43,24 @@ impl SignedCertificateTimestamp {
 }
 
 
-fn submit_to_log<'a, C: hyper::client::Connect>(
-    http_client: &'a hyper::Client<C>,
-    log: &'a Log,
+fn submit_to_log<C: hyper::client::Connect>(
+    http_client: &hyper::Client<C>,
+    log: &Log,
     payload: Vec<u8>,
-) -> impl Future<Item = SignedCertificateTimestamp, Error = ()> + 'a {
+) -> impl Future<Item = SignedCertificateTimestamp, Error = ()> {
+    let mut url = "https://".to_string() + &log.url;
+    if !url.ends_with('/') {
+        url += "/";
+    }
+    url += "ct/v1/add-chain";
+    let mut request = hyper::Request::new(hyper::Method::Post, url.parse().unwrap());
+    request.headers_mut().set(
+        hyper::header::ContentType::json(),
+    );
+    request.set_body(payload);
+    let r = http_client.request(request);
     async_block! {
-        let mut url = "https://".to_string() + &log.url;
-        if !url.ends_with('/') {
-            url += "/";
-        }
-        url += "ct/v1/add-chain";
-        let mut request = hyper::Request::new(hyper::Method::Post, url.parse().unwrap());
-        request.headers_mut().set(
-            hyper::header::ContentType::json(),
-        );
-        request.set_body(payload);
-        let response = match await!(http_client.request(request)) {
+        let response = match await!(r) {
             Ok(r) => r,
             // TODO: maybe not all of these should be silently ignored.
             Err(_) => return Err(()),
@@ -92,7 +93,7 @@ pub struct AddChainRequest {
 pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
     http_client: &'a hyper::Client<C>,
     logs: &'a [Log],
-    cert: &'a [Vec<u8>],
+    cert: &[Vec<u8>],
 ) -> impl Future<Item = Vec<(&'a Log, SignedCertificateTimestamp)>, Error = ()> + 'a {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
@@ -100,8 +101,9 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
 
     let futures = logs.iter().map(move |log| {
         let payload = payload.clone();
+        let s = submit_to_log(http_client, log, payload);
         async_block! {
-            let sct = await!(submit_to_log(&http_client, log, payload))?;
+            let sct = await!(s)?;
             Ok((log, sct))
         }
     });

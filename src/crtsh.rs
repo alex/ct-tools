@@ -6,27 +6,29 @@ use hyper;
 use serde_json;
 use url;
 
-pub fn build_chain_for_cert<'a, C: hyper::client::Connect>(
-    http_client: &'a hyper::Client<C>,
-    cert: &'a [u8],
-) -> impl Future<Item = Vec<Vec<u8>>, Error = ()> + 'a {
+pub fn build_chain_for_cert<C: hyper::client::Connect>(
+    http_client: &hyper::Client<C>,
+    cert: &[u8],
+) -> impl Future<Item = Vec<Vec<u8>>, Error = ()> {
+    let body = url::form_urlencoded::Serializer::new(String::new())
+        .append_pair("b64cert", &base64::encode(&cert))
+        .append_pair("onlyonechain", "Y")
+        .finish();
+    let mut request = hyper::Request::new(
+        hyper::Method::Post,
+        "https://crt.sh/gen-add-chain".parse().unwrap(),
+    );
+    request.headers_mut().set(
+        hyper::header::ContentType::form_url_encoded(),
+    );
+    request.headers_mut().set(
+        hyper::header::Connection::keep_alive(),
+    );
+    request.set_body(body.into_bytes());
+    // TODO: undo this once lifetime bugs are fixed
+    let r = http_client.request(request);
     async_block! {
-        let body = url::form_urlencoded::Serializer::new(String::new())
-            .append_pair("b64cert", &base64::encode(&cert))
-            .append_pair("onlyonechain", "Y")
-            .finish();
-        let mut request = hyper::Request::new(
-            hyper::Method::Post,
-            "https://crt.sh/gen-add-chain".parse().unwrap(),
-        );
-        request.headers_mut().set(
-            hyper::header::ContentType::form_url_encoded(),
-        );
-        request.headers_mut().set(
-            hyper::header::Connection::keep_alive(),
-        );
-        request.set_body(body.into_bytes());
-        let response = match await!(http_client.request(request)) {
+        let response = match await!(r) {
             Ok(response) => response,
             // TODO: maybe be more selective in error handling
             Err(_) => return Err(()),
