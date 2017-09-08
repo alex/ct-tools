@@ -91,7 +91,7 @@ pub struct AddChainRequest {
 }
 
 pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
-    http_client: &'a hyper::Client<C>,
+    http_client: &hyper::Client<C>,
     logs: &'a [Log],
     cert: &[Vec<u8>],
 ) -> impl Future<Item = Vec<(&'a Log, SignedCertificateTimestamp)>, Error = ()> + 'a {
@@ -106,7 +106,7 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
             let sct = await!(s)?;
             Ok((log, sct))
         }
-    });
+    }).collect::<Vec<_>>();
 
     futures::future::join_all(futures)
 }
