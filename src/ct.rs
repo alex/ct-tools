@@ -99,14 +99,17 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
     }).unwrap();
 
-    let futures = logs.iter().enumerate().map(move |(idx, log)| {
-        let payload = payload.clone();
-        let s = submit_to_log(http_client, log, payload);
-        async_block! {
-            let sct = await!(s)?;
-            Ok((idx, sct))
-        }
-    }).collect::<Vec<_>>();
+    let futures = logs.iter()
+        .enumerate()
+        .map(move |(idx, log)| {
+            let payload = payload.clone();
+            let s = submit_to_log(http_client, log, payload);
+            async_block! {
+                let sct = await!(s)?;
+                Ok((idx, sct))
+            }
+        })
+        .collect::<Vec<_>>();
 
     futures::future::join_all(futures)
 }
