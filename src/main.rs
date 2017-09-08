@@ -212,16 +212,12 @@ impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, request: hyper::server::Request) -> Self::Future {
-        let templates = self.templates.clone();
-        let http_client = self.http_client.clone();
-        let logs = self.logs.clone();
-        let handle = self.handle.clone();
         Box::new(handle_request(
             request,
-            templates,
-            http_client,
-            logs,
-            handle,
+            self.templates.clone(),
+            self.http_client.clone(),
+            self.logs.clone(),
+            self.handle.clone(),
         ))
     }
 }
