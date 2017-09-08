@@ -92,19 +92,19 @@ pub struct AddChainRequest {
 
 pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
     http_client: &hyper::Client<C>,
-    logs: &'a [Log],
+    logs: &[Log],
     cert: &[Vec<u8>],
-) -> impl Future<Item = Vec<(&'a Log, SignedCertificateTimestamp)>, Error = ()> + 'a {
+) -> impl Future<Item = Vec<(usize, SignedCertificateTimestamp)>, Error = ()> {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
     }).unwrap();
 
-    let futures = logs.iter().map(move |log| {
+    let futures = logs.iter().enumerate().map(move |(idx, log)| {
         let payload = payload.clone();
         let s = submit_to_log(http_client, log, payload);
         async_block! {
             let sct = await!(s)?;
-            Ok((log, sct))
+            Ok((idx, sct))
         }
     }).collect::<Vec<_>>();
 

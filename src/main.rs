@@ -50,7 +50,7 @@ fn new_http_client(
 
 fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
-    let mut http_client = new_http_client(&core.handle());
+    let http_client = new_http_client(&core.handle());
 
     let logs = match log_urls {
         Some(urls) => {
@@ -99,7 +99,8 @@ fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
         }
         let mut table = prettytable::Table::new();
         table.add_row(row!["Log", "SCT"]);
-        for (log, sct) in scts {
+        for (log_idx, sct) in scts {
+            let log = &logs[log_idx];
             table.add_row(row![log.description, base64::encode(&sct.to_raw_bytes())]);
         }
         table.printstd();
@@ -286,7 +287,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     ));
 
     let mut core = tokio_core::reactor::Core::new().unwrap();
-    let mut http_client = new_http_client(&core.handle());
+    let http_client = new_http_client(&core.handle());
     let logs = Arc::new(core.run(fetch_trusted_ct_logs(&http_client)).unwrap());
     let templates = Arc::new(compile_templates!("templates/*"));
 
