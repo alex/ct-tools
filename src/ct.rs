@@ -105,11 +105,15 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
             let payload = payload.clone();
             let s = submit_to_log(http_client, log, payload);
             async_block! {
-                let sct = await!(s)?;
-                Ok((idx, sct))
+                match await!(s) {
+                    Ok(sct) => Ok(Some((idx, sct))),
+                    Err(()) => Ok(None),
+                }
             }
         })
         .collect::<Vec<_>>();
 
-    futures::future::join_all(futures)
+    futures::future::join_all(futures).map(|scts| {
+        scts.into_iter().filter_map(|s| s).collect()
+    })
 }
