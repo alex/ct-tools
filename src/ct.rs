@@ -113,7 +113,5 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
         })
         .collect::<Vec<_>>();
 
-    futures::future::join_all(futures).map(|scts| {
-        scts.into_iter().filter_map(|s| s).collect()
-    })
+    futures::future::join_all(futures).map(|scts| scts.into_iter().filter_map(|s| s).collect())
 }

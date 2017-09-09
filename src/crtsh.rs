@@ -52,21 +52,22 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
     }
 }
 
-pub fn is_cert_logged<'a, C: hyper::client::Connect>(
-    http_client: &'a hyper::Client<C>,
-    cert: &'a [u8],
-) -> impl Future<Item = bool, Error = ()> + 'a {
+pub fn is_cert_logged<C: hyper::client::Connect>(
+    http_client: &hyper::Client<C>,
+    cert: &[u8],
+) -> impl Future<Item = bool, Error = ()> {
+    let mut request = hyper::Request::new(
+        hyper::Method::Get,
+        format!("https://crt.sh/?d={}", sha256_hex(&cert))
+            .parse()
+            .unwrap(),
+    );
+    request.headers_mut().set(
+        hyper::header::Connection::keep_alive(),
+    );
+    let r = http_client.request(request);
     async_block! {
-        let mut request = hyper::Request::new(
-            hyper::Method::Get,
-            format!("https://crt.sh/?d={}", sha256_hex(&cert))
-                .parse()
-                .unwrap(),
-        );
-        request.headers_mut().set(
-            hyper::header::Connection::keep_alive(),
-        );
-        let response = await!(http_client.request(request)).unwrap();
+        let response = await!(r).unwrap();
         let res = Ok(response.status() == hyper::StatusCode::Ok);
         // TODO: lifetime issue in rustc's generator impl
         res

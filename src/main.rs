@@ -113,25 +113,31 @@ fn check(paths: clap::Values) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
 
-    let paths = paths.collect::<Vec<_>>();
+    let paths = futures::stream::iter_ok::<_, ()>(paths.collect::<Vec<_>>());
     // TODO: parallelism
-    for path in paths {
-        let mut contents = Vec::new();
-        File::open(path)
-            .unwrap()
-            .read_to_end(&mut contents)
-            .unwrap();
+    // TODO: it won't compile with the type decl, and there's no way to have one of those on an
+    // `impl Future`
+    let work: Box<Future<Item = (), Error = ()>> = Box::new(async_block! {
+        #[async]
+        for path in paths {
+            let mut contents = Vec::new();
+            File::open(path)
+                .unwrap()
+                .read_to_end(&mut contents)
+                .unwrap();
 
-        let chain = pems_to_chain(&contents);
-
-        let is_logged = core.run(crtsh::is_cert_logged(&http_client, &chain[0]))
-            .unwrap();
-        if is_logged {
-            println!("{} was already logged", path);
-        } else {
-            println!("{} has not been logged", path);
+            let chain = pems_to_chain(&contents);
+            let is_logged = await!(crtsh::is_cert_logged(&http_client, &chain[0])).unwrap();
+            if is_logged {
+                println!("{} was already logged", path);
+            } else {
+                println!("{} has not been logged", path);
+            }
         }
-    }
+
+        Ok(())
+    });
+    core.run(work).unwrap();
 }
 
 struct HttpHandler<C: hyper::client::Connect> {
