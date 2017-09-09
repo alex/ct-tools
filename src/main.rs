@@ -42,7 +42,6 @@ fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
 fn new_http_client(
     handle: &tokio_core::reactor::Handle,
 ) -> hyper::Client<hyper_rustls::HttpsConnector> {
-    // TODO: pool?
     hyper::Client::configure()
         .connector(hyper_rustls::HttpsConnector::new(4, handle))
         .build(handle)
