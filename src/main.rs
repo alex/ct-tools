@@ -113,21 +113,23 @@ fn check(paths: clap::Values) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
 
-    let paths = futures::stream::iter_ok::<_, ()>(paths.collect::<Vec<_>>());
-    // TODO: parallelism
-    // TODO: it won't compile with the type decl, and there's no way to have one of those on an
-    // `impl Future`
-    let work: Box<Future<Item = (), Error = ()>> = Box::new(async_block! {
-        #[async]
-        for path in paths {
-            let mut contents = Vec::new();
-            File::open(path)
-                .unwrap()
-                .read_to_end(&mut contents)
-                .unwrap();
+    let items = futures::stream::futures_unordered(paths.map(|path| {
+        let path = path.to_string();
+        let mut contents = Vec::new();
+        File::open(&path)
+            .unwrap()
+            .read_to_end(&mut contents)
+            .unwrap();
 
-            let chain = pems_to_chain(&contents);
-            let is_logged = await!(crtsh::is_cert_logged(&http_client, &chain[0])).unwrap();
+        let chain = pems_to_chain(&contents);
+        let is_logged = crtsh::is_cert_logged(&http_client, &chain[0]);
+        async_block! {
+            Ok(futures::future::ok((path, await!(is_logged).unwrap())))
+        }
+    })).buffer_unordered(16);
+    let work: Box<futures::Future<Item = (), Error = ()>> = Box::new(async_block! {
+        #[async]
+        for (path, is_logged) in items {
             if is_logged {
                 println!("{} was already logged", path);
             } else {
