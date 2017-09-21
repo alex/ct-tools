@@ -77,11 +77,7 @@ fn submit_to_log<C: hyper::client::Connect>(
         // in the face of a dumb or malicious log.
         let body = await!(response.body().take(10 * 1024 * 1024).concat2())
             .unwrap();
-        let res = Ok(
-            serde_json::from_slice(&body).unwrap()
-        );
-        // TODO: lifetime issue in rustc's generator impl
-        res
+        return Ok(serde_json::from_slice(&body).unwrap());
     }
 }
 

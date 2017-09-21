@@ -40,15 +40,13 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
 
         let body = await!(response.body().concat2()).unwrap();
         let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
-        let res = Ok(
+        return Ok(
             add_chain_request
                 .chain
                 .iter()
                 .map(|c| base64::decode(c).unwrap())
                 .collect(),
         );
-        // TODO: lifetime issue in rustc's generator impl
-        res
     }
 }
 
@@ -68,9 +66,7 @@ pub fn is_cert_logged<C: hyper::client::Connect>(
     let r = http_client.request(request);
     async_block! {
         let response = await!(r).unwrap();
-        let res = Ok(response.status() == hyper::StatusCode::Ok);
-        // TODO: lifetime issue in rustc's generator impl
-        res
+        return Ok(response.status() == hyper::StatusCode::Ok);
     }
 }
 
