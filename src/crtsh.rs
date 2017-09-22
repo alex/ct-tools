@@ -56,7 +56,7 @@ pub fn is_cert_logged<C: hyper::client::Connect>(
 ) -> impl Future<Item = bool, Error = ()> {
     let mut request = hyper::Request::new(
         hyper::Method::Get,
-        format!("https://crt.sh/?d={}", sha256_hex(&cert))
+        format!("https://crt.sh/?d={}", sha256_hex(cert))
             .parse()
             .unwrap(),
     );

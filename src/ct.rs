@@ -86,7 +86,7 @@ pub struct AddChainRequest {
     pub chain: Vec<String>,
 }
 
-pub fn submit_cert_to_logs<'a, C: hyper::client::Connect>(
+pub fn submit_cert_to_logs<C: hyper::client::Connect>(
     http_client: &hyper::Client<C>,
     logs: &[Log],
     cert: &[Vec<u8>],
