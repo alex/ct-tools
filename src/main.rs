@@ -221,9 +221,9 @@ impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
     fn call(&self, request: hyper::server::Request) -> Self::Future {
         Box::new(handle_request(
             request,
-            self.templates.clone(),
-            self.http_client.clone(),
-            self.logs.clone(),
+            Arc::clone(&self.templates),
+            Arc::clone(&self.http_client),
+            Arc::clone(&self.logs),
             self.handle.clone(),
         ))
     }
@@ -310,16 +310,16 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     let new_service = Arc::new(move |handle| {
         let http_client = new_http_client(&handle);
         Ok(HttpHandler {
-            templates: templates.clone(),
+            templates: Arc::clone(&templates),
             http_client: Arc::new(http_client),
-            logs: logs.clone(),
+            logs: Arc::clone(&logs),
             handle: handle,
         })
     });
     tcp_server.with_handle(move |handle| {
         // TODO: this doesn't seem right...
         let remote = handle.remote().clone();
-        let new_service = new_service.clone();
+        let new_service = Arc::clone(&new_service);
         move || new_service(remote.handle().unwrap())
     });
 }
