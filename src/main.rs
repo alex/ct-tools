@@ -292,7 +292,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     println!("Listening on https://{} ...", addr);
     serve_https(addr.parse().unwrap(), tls_config, 16, move |handle,
           tls_session| {
-        let http_client = new_http_client(&handle);
+        let http_client = new_http_client(handle);
         HttpHandler {
             templates: Arc::clone(&templates),
             http_client: Arc::new(http_client),
