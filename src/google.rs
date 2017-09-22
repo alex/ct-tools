@@ -6,7 +6,9 @@ use hyper;
 use serde_json;
 
 
-const LOG_LIST_URL: &'static str = "https://www.gstatic.com/ct/log_list/log_list.json";
+const TRUSTED_LOG_LIST_URL: &'static str = "https://www.gstatic.com/ct/log_list/log_list.json";
+const ALL_LOG_LIST_URL: &'static str = "https://www.gstatic.com/ct/log_list/all_logs_list.json";
+
 #[derive(Deserialize)]
 struct LogsResponseLogs {
     description: String,
@@ -30,8 +32,21 @@ struct LogsResponse {
 pub fn fetch_trusted_ct_logs<'a, C: hyper::client::Connect>(
     http_client: &'a hyper::Client<C>,
 ) -> impl Future<Item = Vec<Log>, Error = ()> + 'a {
+    return fetch_log_list(http_client, TRUSTED_LOG_LIST_URL.parse().unwrap());
+}
+
+pub fn fetch_all_ct_logs<'a, C: hyper::client::Connect>(
+    http_client: &'a hyper::Client<C>,
+) -> impl Future<Item = Vec<Log>, Error = ()> + 'a {
+    return fetch_log_list(http_client, ALL_LOG_LIST_URL.parse().unwrap());
+}
+
+fn fetch_log_list<'a, C: hyper::client::Connect>(
+    http_client: &'a hyper::Client<C>,
+    uri: hyper::Uri,
+) -> impl Future<Item = Vec<Log>, Error = ()> + 'a {
     async_block! {
-        let response = await!(http_client.get(LOG_LIST_URL.parse().unwrap())).unwrap();
+        let response = await!(http_client.get(uri)).unwrap();
         // Limit the response to 10MB at most, to be resillient to DoS.
         let body = await!(response.body().take(10 * 1024 * 1024).concat2()).unwrap();
         let logs_response: LogsResponse = serde_json::from_slice(&body).unwrap();

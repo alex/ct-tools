@@ -22,7 +22,7 @@ extern crate ct_tools;
 use ct_tools::{crtsh, letsencrypt};
 use ct_tools::common::{Log, sha256_hex};
 use ct_tools::ct::submit_cert_to_logs;
-use ct_tools::google::fetch_trusted_ct_logs;
+use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use futures::prelude::*;
 use std::env;
 use std::fs::File;
@@ -47,21 +47,14 @@ fn new_http_client(
         .build(handle)
 }
 
-fn submit(paths: clap::Values, log_urls: Option<clap::Values>) {
+fn submit(paths: clap::Values, all_logs: bool) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
 
-    let logs = match log_urls {
-        Some(urls) => {
-            urls.map(|url| {
-                Log {
-                    url: url.to_string(),
-                    description: url.to_string(),
-                    is_google: false,
-                }
-            }).collect()
-        }
-        None => core.run(fetch_trusted_ct_logs(&http_client)).unwrap(),
+    let logs = if all_logs {
+        core.run(fetch_all_ct_logs(&http_client)).unwrap()
+    } else {
+        core.run(fetch_trusted_ct_logs(&http_client)).unwrap()
     };
 
     for path in paths {
@@ -329,13 +322,9 @@ fn main() {
                         .required(true)
                         .help("Path to certificate or chain"),
                 )
-                .arg(
-                    clap::Arg::with_name("log-url")
-                        .long("--log-url")
-                        .takes_value(true)
-                        .multiple(true)
-                        .help("Log URL to submit certificate to"),
-                ),
+                .arg(clap::Arg::with_name("all-logs").long("--all-logs").help(
+                    "Submit to all logs, instead of just ones trusted by Chrome",
+                )),
         )
         .subcommand(
             clap::SubCommand::with_name("check")
@@ -372,7 +361,7 @@ fn main() {
     if let Some(matches) = matches.subcommand_matches("submit") {
         submit(
             matches.values_of("path").unwrap(),
-            matches.values_of("log-url"),
+            matches.is_present("all-logs"),
         );
     } else if let Some(matches) = matches.subcommand_matches("check") {
         check(matches.values_of("path").unwrap());
