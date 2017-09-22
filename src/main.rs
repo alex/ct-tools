@@ -11,11 +11,11 @@ extern crate rustls;
 #[macro_use]
 extern crate tera;
 extern crate tokio_core;
-extern crate tokio_proto;
-extern crate tokio_rustls;
 extern crate futures_await as futures;
 extern crate tokio_process;
-
+extern crate tokio_service;
+extern crate net2;
+extern crate tokio_rustls;
 
 extern crate ct_tools;
 
@@ -24,12 +24,18 @@ use ct_tools::common::{Log, sha256_hex};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use futures::prelude::*;
+use net2::unix::UnixTcpBuilderExt;
+use rustls::Session;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::net::SocketAddr;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
+use std::thread;
+use tokio_core::reactor::Handle;
 use tokio_process::CommandExt;
+use tokio_rustls::ServerConfigExt;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
     pem::parse_many(data)
@@ -139,6 +145,8 @@ struct HttpHandler<C: hyper::client::Connect> {
     templates: Arc<tera::Tera>,
     http_client: Arc<hyper::Client<C>>,
     logs: Arc<Vec<Log>>,
+
+    client_certs: Option<Vec<rustls::Certificate>>,
 }
 
 #[async]
@@ -148,19 +156,11 @@ fn handle_request<C: hyper::client::Connect>(
     http_client: Arc<hyper::Client<C>>,
     logs: Arc<Vec<Log>>,
     handle: tokio_core::reactor::Handle,
+    client_certs: Option<Vec<rustls::Certificate>>,
 ) -> Result<hyper::server::Response, hyper::Error> {
-    // TODO:
-    // let peer_certs = request
-    //     .ssl::<hyper_rustls::WrappedStream>()
-    //     .unwrap()
-    //     .to_tls_stream()
-    //     .get_session()
-    //     .get_peer_certificates();
-    let peer_certs: Option<Vec<rustls::Certificate>> = None;
-
     let mut crtsh_url = None;
     let mut rendered_cert = None;
-    if let Some(peer_chain) = peer_certs {
+    if let Some(peer_chain) = client_certs {
         if request.method() == &hyper::Method::Post {
             if let Ok(chain) = await!(crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)) {
                 let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain)).unwrap();
@@ -212,6 +212,7 @@ impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
             Arc::clone(&self.http_client),
             Arc::clone(&self.logs),
             self.handle.clone(),
+            self.client_certs.clone(),
         ))
     }
 }
@@ -287,28 +288,91 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         "0.0.0.0:443"
     };
 
-    let tls_server =
-        tokio_rustls::proto::Server::new(hyper::server::Http::new(), Arc::new(tls_config));
-    let mut tcp_server = tokio_proto::TcpServer::new(tls_server, addr.parse().unwrap());
     // If there aren't at least two threads, the Let's Encrypt integration will deadlock.
-    tcp_server.threads(16);
-
     println!("Listening on https://{} ...", addr);
-    let new_service = Arc::new(move |handle| {
+    serve_https(addr.parse().unwrap(), tls_config, 16, move |handle,
+          tls_session| {
         let http_client = new_http_client(&handle);
-        Ok(HttpHandler {
+        HttpHandler {
             templates: Arc::clone(&templates),
             http_client: Arc::new(http_client),
             logs: Arc::clone(&logs),
-            handle: handle,
+            handle: handle.clone(),
+
+            client_certs: tls_session.get_peer_certificates(),
+        }
+    });
+}
+
+fn serve_https<F, S>(
+    addr: SocketAddr,
+    tls_config: rustls::ServerConfig,
+    threads: usize,
+    new_service: F,
+) where
+    F: Fn(&Handle, &rustls::ServerSession) -> S + Sync + Send + 'static,
+    S: tokio_service::Service<
+        Request = hyper::server::Request,
+        Response = hyper::server::Response,
+        Error = hyper::Error,
+    >
+        + 'static,
+{
+    let tls_config = Arc::new(tls_config);
+    let new_service = Arc::new(new_service);
+    let threads = (0..threads - 1)
+        .map(|i| {
+            let tls_config = Arc::clone(&tls_config);
+            let new_service = Arc::clone(&new_service);
+            thread::Builder::new()
+                .name(format!("worker{}", i))
+                .spawn(move || { _serve(addr, tls_config, &*new_service); })
+                .unwrap()
         })
-    });
-    tcp_server.with_handle(move |handle| {
-        // TODO: this doesn't seem right...
-        let remote = handle.remote().clone();
-        let new_service = Arc::clone(&new_service);
-        move || new_service(remote.handle().unwrap())
-    });
+        .collect::<Vec<_>>();
+
+    _serve(addr, tls_config, &*new_service);
+    for t in threads {
+        t.join().unwrap();
+    }
+}
+
+fn _serve<F, S>(addr: SocketAddr, tls_config: Arc<rustls::ServerConfig>, new_service: &F)
+where
+    F: Fn(&Handle, &rustls::ServerSession) -> S,
+    S: tokio_service::Service<
+        Request = hyper::server::Request,
+        Response = hyper::server::Response,
+        Error = hyper::Error,
+    >
+        + 'static,
+{
+    let mut core = tokio_core::reactor::Core::new().unwrap();
+    let handle = core.handle();
+
+    let listener = match addr {
+        SocketAddr::V4(_) => net2::TcpBuilder::new_v4().unwrap(),
+        SocketAddr::V6(_) => net2::TcpBuilder::new_v6().unwrap(),
+    };
+    listener.reuse_port(true).unwrap();
+    listener.reuse_address(true).unwrap();
+    listener.bind(addr).unwrap();
+    let work = tokio_core::net::TcpListener::from_listener(
+        listener.listen(1024).unwrap(),
+        &addr,
+        &core.handle(),
+    ).unwrap()
+        .incoming()
+        .for_each(move |(sock, addr)| {
+            let handle = handle.clone();
+            tls_config.accept_async(sock).map_err(|_| ()).and_then(move |s| {
+                let http = hyper::server::Http::new();
+                let service = new_service(&handle, s.get_ref().1);
+                http.bind_connection(&handle, s, addr, service);
+                Ok(())
+            }).or_else(|()| Ok(()))
+        });
+    core.run(work).unwrap();
 }
 
 fn main() {

@@ -8,8 +8,9 @@ futures = "*"
 futures-await = { git = "https://github.com/alexcrichton/futures-await" }
 tokio-core = "*"
 tokio-process = "*"
-tokio-proto = "*"
 tokio-rustls = "*"
+tokio-service = "*"
+net2 = "*"
 
 acme-client = "*"
 
