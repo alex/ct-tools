@@ -167,42 +167,36 @@ fn handle_request<C: hyper::client::Connect>(
 
     let mut crtsh_url = None;
     let mut rendered_cert = None;
-    match peer_certs {
-        Some(peer_chain) => {
-            if request.method() == &hyper::Method::Post {
-                if let Ok(chain) = await!(
-                    crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)
-                )
-                {
-                    let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain)).unwrap();
-                    if !scts.is_empty() {
-                        crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
-                        println!("Successfully submitted: {}", sha256_hex(&chain[0]));
-                    }
+    if let Some(peer_chain) = peer_certs {
+        if request.method() == &hyper::Method::Post {
+            if let Ok(chain) = await!(crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)) {
+                let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain)).unwrap();
+                if !scts.is_empty() {
+                    crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
+                    println!("Successfully submitted: {}", sha256_hex(&chain[0]));
                 }
             }
-
-            let mut process = Command::new("openssl")
-                .arg("x509")
-                .arg("-text")
-                .arg("-noout")
-                .arg("-inform")
-                .arg("der")
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn_async(&handle)
-                .unwrap();
-            process
-                .stdin()
-                .as_mut()
-                .unwrap()
-                .write_all(&peer_chain[0].0)
-                .unwrap();
-            let out = await!(process.wait_with_output()).unwrap();
-            rendered_cert = Some(String::from_utf8_lossy(&out.stdout).into_owned());
         }
-        None => {}
+
+        let mut process = Command::new("openssl")
+            .arg("x509")
+            .arg("-text")
+            .arg("-noout")
+            .arg("-inform")
+            .arg("der")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn_async(&handle)
+            .unwrap();
+        process
+            .stdin()
+            .as_mut()
+            .unwrap()
+            .write_all(&peer_chain[0].0)
+            .unwrap();
+        let out = await!(process.wait_with_output()).unwrap();
+        rendered_cert = Some(String::from_utf8_lossy(&out.stdout).into_owned());
     }
 
     let mut context = tera::Context::new();
