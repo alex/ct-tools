@@ -32,13 +32,13 @@ struct LogsResponse {
 pub fn fetch_trusted_ct_logs<'a, C: hyper::client::Connect>(
     http_client: &'a hyper::Client<C>,
 ) -> impl Future<Item = Vec<Log>, Error = ()> + 'a {
-    return fetch_log_list(http_client, TRUSTED_LOG_LIST_URL.parse().unwrap());
+    fetch_log_list(http_client, TRUSTED_LOG_LIST_URL.parse().unwrap())
 }
 
 pub fn fetch_all_ct_logs<'a, C: hyper::client::Connect>(
     http_client: &'a hyper::Client<C>,
 ) -> impl Future<Item = Vec<Log>, Error = ()> + 'a {
-    return fetch_log_list(http_client, ALL_LOG_LIST_URL.parse().unwrap());
+    fetch_log_list(http_client, ALL_LOG_LIST_URL.parse().unwrap())
 }
 
 fn fetch_log_list<'a, C: hyper::client::Connect>(
