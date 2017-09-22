@@ -8,7 +8,8 @@ use futures::prelude::*;
 use hyper;
 use serde_json;
 use std::io::Write;
-
+use std::time::Duration;
+use tokio_core::reactor::Timeout;
 
 
 #[derive(Debug, Deserialize)]
@@ -98,12 +99,14 @@ pub fn submit_cert_to_logs<C: hyper::client::Connect>(
     let futures = logs.iter()
         .enumerate()
         .map(move |(idx, log)| {
+            let timeout = Timeout::new(Duration::from_secs(5), http_client.handle()).unwrap();
+
             let payload = payload.clone();
-            let s = submit_to_log(http_client, log, payload);
+            let s = submit_to_log(http_client, log, payload).select2(timeout);
             async_block! {
                 match await!(s) {
-                    Ok(sct) => Ok(Some((idx, sct))),
-                    Err(()) => Ok(None),
+                    Ok(futures::future::Either::A((sct, _))) => Ok(Some((idx, sct))),
+                    _ => Ok(None),
                 }
             }
         })
