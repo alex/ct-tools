@@ -31,7 +31,7 @@ impl SignedCertificateTimestamp {
         b.write_u64::<BigEndian>(self.timestamp).unwrap();
 
         let extensions = base64::decode(&self.extensions).unwrap();
-        assert!(extensions.len() <= 65535);
+        assert!(extensions.len() <= 65_535);
         b.write_u16::<BigEndian>(extensions.len() as u16).unwrap();
         b.write_all(&extensions).unwrap();
 
@@ -77,7 +77,7 @@ fn submit_to_log<C: hyper::client::Connect>(
         // in the face of a dumb or malicious log.
         let body = await!(response.body().take(10 * 1024 * 1024).concat2())
             .unwrap();
-        return Ok(serde_json::from_slice(&body).unwrap());
+        Ok(serde_json::from_slice(&body).unwrap())
     }
 }
 
