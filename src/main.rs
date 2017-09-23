@@ -122,17 +122,17 @@ fn check(paths: clap::Values) {
         let chain = pems_to_chain(&contents);
         let is_logged = crtsh::is_cert_logged(&http_client, &chain[0]);
         async_block! {
-            Ok(futures::future::ok((path, await!(is_logged).unwrap())))
-        }
-    })).buffer_unordered(16);
-    let work: Box<futures::Future<Item = (), Error = ()>> = Box::new(async_block! {
-        #[async]
-        for (path, is_logged) in items {
-            if is_logged {
+            if await!(is_logged).unwrap() {
                 println!("{} was already logged", path);
             } else {
                 println!("{} has not been logged", path);
             }
+            Ok(futures::future::ok(()))
+        }
+    })).buffer_unordered(16);
+    let work: Box<futures::Future<Item = (), Error = ()>> = Box::new(async_block! {
+        #[async]
+        for () in items {
         }
 
         Ok(())
