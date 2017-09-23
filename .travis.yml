@@ -1,8 +1,8 @@
 sudo: false
+dist: trusty
 language: rust
 cache: cargo
 rust:
-  - stable
   - nightly
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH

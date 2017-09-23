@@ -4,6 +4,15 @@ version = "0.1.0"
 authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
 
 [dependencies]
+futures = "*"
+futures-await = { git = "https://github.com/alexcrichton/futures-await" }
+tokio-core = "*"
+tokio-io = "*"
+tokio-process = "*"
+tokio-rustls = "*"
+tokio-service = "*"
+net2 = "*"
+
 acme-client = "*"
 
 base64 = "*"
@@ -16,16 +25,14 @@ clap = "*"
 
 hex = "*"
 
-hyper = "< 0.11"
-hyper-rustls = ">=0.6"
+hyper = ">=0.11"
+hyper-rustls = ">=0.11"
 
 openssl = "*"
 
-rayon = "*"
+ring = ">=0.12"
 
-ring = "*"
-
-rustls = { version = ">=0.8", features = ["dangerous_configuration"] }
+rustls = { version = ">=0.11", features = ["dangerous_configuration"] }
 
 serde = "*"
 serde_derive = "*"

@@ -1,4 +1,5 @@
 reorder_imports = true
 reorder_imported_names = true
+reorder_imports_in_group = true
 normalize_imports = true
-normalize_comments = false
+normalize_comments = true
