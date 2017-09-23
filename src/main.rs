@@ -1,6 +1,5 @@
 #![feature(conservative_impl_trait, generators, proc_macro)]
 
-extern crate base64;
 extern crate clap;
 extern crate hyper;
 extern crate hyper_rustls;
@@ -96,10 +95,10 @@ fn submit(paths: clap::Values, all_logs: bool) {
             );
         }
         let mut table = prettytable::Table::new();
-        table.add_row(row!["Log", "SCT"]);
-        for (log_idx, sct) in scts {
+        table.add_row(row!["Log"]);
+        for (log_idx, _) in scts {
             let log = &logs[log_idx];
-            table.add_row(row![log.description, base64::encode(&sct.to_raw_bytes())]);
+            table.add_row(row![log.description]);
         }
         table.printstd();
         println!();
@@ -111,7 +110,7 @@ fn check(paths: clap::Values) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
 
-    let items: Box<futures::Future<Item = (), Error = ()>> = Box::new(futures::stream::futures_unordered(paths.map(|path| {
+    let items: Box<futures::Future<Item = (), Error = ()>> = Box::new(futures::stream::futures_ordered(paths.map(|path| {
         let path = path.to_string();
         let mut contents = Vec::new();
         File::open(&path)
@@ -129,7 +128,7 @@ fn check(paths: clap::Values) {
             }
             Ok(futures::future::ok(()))
         }
-    })).buffer_unordered(16).for_each(|()| { futures::future::ok(()) }));
+    })).buffered(16).for_each(|()| { futures::future::ok(()) }));
     core.run(items).unwrap();
 }
 
