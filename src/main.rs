@@ -15,6 +15,7 @@ extern crate tokio_process;
 extern crate tokio_service;
 extern crate net2;
 extern crate tokio_rustls;
+extern crate tokio_io;
 
 extern crate ct_tools;
 
@@ -27,7 +28,7 @@ use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::env;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::net::SocketAddr;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -174,12 +175,11 @@ fn handle_request<C: hyper::client::Connect>(
             .stderr(Stdio::piped())
             .spawn_async(&handle)
             .unwrap();
-        process
-            .stdin()
-            .as_mut()
-            .unwrap()
-            .write_all(&peer_chain[0].0)
-            .unwrap();
+        let cert_bytes = peer_chain[0].0.clone();
+        await!(tokio_io::io::write_all(
+            process.stdin().take().unwrap(),
+            cert_bytes,
+        )).unwrap();
         let out = await!(process.wait_with_output()).unwrap();
         rendered_cert = Some(String::from_utf8_lossy(&out.stdout).into_owned());
     }
