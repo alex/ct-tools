@@ -31,6 +31,7 @@ use std::fs::File;
 use std::io::Read;
 use std::net::SocketAddr;
 use std::process::{Command, Stdio};
+use std::rc::Rc;
 use std::sync::Arc;
 use std::thread;
 use tokio_core::reactor::Handle;
@@ -55,63 +56,77 @@ fn new_http_client(
 
 fn submit(paths: clap::Values, all_logs: bool) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
-    let http_client = new_http_client(&core.handle());
+    let http_client = Rc::new(new_http_client(&core.handle()));
 
-    let logs = if all_logs {
+    let logs = Rc::new(if all_logs {
         core.run(fetch_all_ct_logs(&http_client)).unwrap()
     } else {
         core.run(fetch_trusted_ct_logs(&http_client)).unwrap()
-    };
+    });
 
-    for path in paths {
-        println!("Submitting {} ...", path);
+    let work: Box<Future<Item=(), Error=()>> =
+            Box::new(futures::stream::futures_ordered(paths.map(|path| {
+        let path = path.to_string();
 
         let mut contents = Vec::new();
-        File::open(path)
+        File::open(&path)
             .unwrap()
             .read_to_end(&mut contents)
             .unwrap();
 
         let mut chain = pems_to_chain(&contents);
-        if chain.len() == 1 {
-            // TODO: There's got to be some way to do this ourselves, instead of using crt.sh as a
-            // glorified AIA chaser.
-            println!("Only one certificate in chain, using crt.sh to build a full chain ...");
-            let new_chain = core.run(crtsh::build_chain_for_cert(&http_client, &chain[0]));
-            chain = match new_chain {
-                Ok(c) => c,
-                Err(()) => {
-                    println!("Unable to build a chain");
-                    continue;
+        let http_client = Rc::clone(&http_client);
+        let logs = Rc::clone(&logs);
+        async_block! {
+            if chain.len() == 1 {
+                // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
+                // as a glorified AIA chaser.
+                println!(
+                    "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
+                    &path
+                );
+                let new_chain = await!(crtsh::build_chain_for_cert(&http_client, &chain[0]));
+                chain = match new_chain {
+                    Ok(c) => c,
+                    Err(()) => {
+                        println!("[{}] Unable to build a chain", path);
+                        chain
+                    }
                 }
             }
-        }
-        let scts = core.run(submit_cert_to_logs(&http_client, &logs, &chain))
-            .unwrap();
+            println!("[{}] Submitting ...", &path);
+            let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain)).unwrap();
 
-        if !scts.is_empty() {
-            println!(
-                "Find the cert on crt.sh: {}",
-                crtsh::url_for_cert(&chain[0])
-            );
+            if !scts.is_empty() {
+                println!(
+                    "[{}] Find the cert on crt.sh: {}",
+                    path,
+                    crtsh::url_for_cert(&chain[0])
+                );
+                let mut table = prettytable::Table::new();
+                table.add_row(row!["Log"]);
+                for (log_idx, _) in scts {
+                    let log = &logs[log_idx];
+                    table.add_row(row![log.description]);
+                }
+                table.printstd();
+                println!();
+                println!();
+            } else {
+                println!("[{}] No SCTs obtained", &path);
+            }
+
+            Ok(futures::future::ok(()))
         }
-        let mut table = prettytable::Table::new();
-        table.add_row(row!["Log"]);
-        for (log_idx, _) in scts {
-            let log = &logs[log_idx];
-            table.add_row(row![log.description]);
-        }
-        table.printstd();
-        println!();
-        println!();
-    }
+    })).buffered(4).for_each(|()| { futures::future::ok(()) }));
+    core.run(work).unwrap();
 }
 
 fn check(paths: clap::Values) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
 
-    let items: Box<futures::Future<Item = (), Error = ()>> =
+    let work: Box<futures::Future<Item = (), Error = ()>> =
             Box::new(futures::stream::futures_ordered(paths.map(|path| {
         let path = path.to_string();
         let mut contents = Vec::new();
@@ -131,7 +146,7 @@ fn check(paths: clap::Values) {
             Ok(futures::future::ok(()))
         }
     })).buffered(16).for_each(|()| { futures::future::ok(()) }));
-    core.run(items).unwrap();
+    core.run(work).unwrap();
 }
 
 struct HttpHandler<C: hyper::client::Connect> {
