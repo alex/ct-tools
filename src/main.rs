@@ -111,7 +111,8 @@ fn check(paths: clap::Values) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
 
-    let items: Box<futures::Future<Item = (), Error = ()>> = Box::new(futures::stream::futures_ordered(paths.map(|path| {
+    let items: Box<futures::Future<Item = (), Error = ()>> =
+            Box::new(futures::stream::futures_ordered(paths.map(|path| {
         let path = path.to_string();
         let mut contents = Vec::new();
         File::open(&path)
