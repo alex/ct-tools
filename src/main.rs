@@ -111,7 +111,7 @@ fn check(paths: clap::Values) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
 
-    let items = futures::stream::futures_unordered(paths.map(|path| {
+    let items: Box<futures::Future<Item = (), Error = ()>> = Box::new(futures::stream::futures_unordered(paths.map(|path| {
         let path = path.to_string();
         let mut contents = Vec::new();
         File::open(&path)
@@ -129,15 +129,8 @@ fn check(paths: clap::Values) {
             }
             Ok(futures::future::ok(()))
         }
-    })).buffer_unordered(16);
-    let work: Box<futures::Future<Item = (), Error = ()>> = Box::new(async_block! {
-        #[async]
-        for () in items {
-        }
-
-        Ok(())
-    });
-    core.run(work).unwrap();
+    })).buffer_unordered(16).for_each(|()| { futures::future::ok(()) }));
+    core.run(items).unwrap();
 }
 
 struct HttpHandler<C: hyper::client::Connect> {
