@@ -136,7 +136,11 @@ fn check(paths: clap::Values) {
             .unwrap();
 
         let chain = pems_to_chain(&contents);
-        let is_logged = crtsh::is_cert_logged(&http_client, &chain[0]);
+        let is_logged: Box<Future<Item=bool, Error=()>> = if chain.is_empty() {
+            Box::new(futures::future::ok(false))
+        } else {
+            Box::new(crtsh::is_cert_logged(&http_client, &chain[0]))
+        };
         async_block! {
             if await!(is_logged).unwrap() {
                 println!("{} was already logged", path);
