@@ -96,7 +96,7 @@ fn submit(paths: clap::Values, all_logs: bool) {
                 }
             }
             println!("[{}] Submitting ...", &path);
-            let timeout = Duration::from_secs(10);
+            let timeout = Duration::from_secs(30);
             let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain, timeout)).unwrap();
 
             if !scts.is_empty() {
