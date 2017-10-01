@@ -91,6 +91,7 @@ pub fn submit_cert_to_logs<C: hyper::client::Connect>(
     http_client: &hyper::Client<C>,
     logs: &[Log],
     cert: &[Vec<u8>],
+    timeout: Duration,
 ) -> impl Future<Item = Vec<(usize, SignedCertificateTimestamp)>, Error = ()> {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
@@ -103,7 +104,7 @@ pub fn submit_cert_to_logs<C: hyper::client::Connect>(
             let handle = http_client.handle().clone();
             let s = submit_to_log(http_client, log, payload);
             async_block! {
-                let timeout = Timeout::new(Duration::from_secs(5), &handle).unwrap();
+                let timeout = Timeout::new(timeout, &handle).unwrap();
                 match await!(s.select2(timeout)) {
                     Ok(futures::future::Either::A((sct, _))) => Ok(Some((idx, sct))),
                     _ => Ok(None),

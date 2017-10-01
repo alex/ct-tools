@@ -34,6 +34,7 @@ use std::process::{Command, Stdio};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 use tokio_core::reactor::Handle;
 use tokio_process::CommandExt;
 use tokio_rustls::ServerConfigExt;
@@ -95,7 +96,8 @@ fn submit(paths: clap::Values, all_logs: bool) {
                 }
             }
             println!("[{}] Submitting ...", &path);
-            let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain)).unwrap();
+            let timeout = Duration::from_secs(10);
+            let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain, timeout)).unwrap();
 
             if !scts.is_empty() {
                 println!(
@@ -176,7 +178,9 @@ fn handle_request<C: hyper::client::Connect>(
     if let Some(peer_chain) = client_certs {
         if request.method() == &hyper::Method::Post {
             if let Ok(chain) = await!(crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)) {
-                let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain)).unwrap();
+                let timeout = Duration::from_secs(5);
+                let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain, timeout))
+                    .unwrap();
                 if !scts.is_empty() {
                     crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
                     println!("Successfully submitted: {}", sha256_hex(&chain[0]));
