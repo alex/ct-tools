@@ -99,12 +99,12 @@ pub fn submit_cert_to_logs<C: hyper::client::Connect>(
     let futures = logs.iter()
         .enumerate()
         .map(move |(idx, log)| {
-            let timeout = Timeout::new(Duration::from_secs(5), http_client.handle()).unwrap();
-
             let payload = payload.clone();
-            let s = submit_to_log(http_client, log, payload).select2(timeout);
+            let handle = http_client.handle().clone();
+            let s = submit_to_log(http_client, log, payload);
             async_block! {
-                match await!(s) {
+                let timeout = Timeout::new(Duration::from_secs(5), &handle).unwrap();
+                match await!(s.select2(timeout)) {
                     Ok(futures::future::Either::A((sct, _))) => Ok(Some((idx, sct))),
                     _ => Ok(None),
                 }
