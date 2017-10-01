@@ -90,7 +90,7 @@ fn submit(paths: clap::Values, all_logs: bool) {
                     Ok(c) => c,
                     Err(()) => {
                         println!("[{}] Unable to build a chain", path);
-                        chain
+                        return Ok(futures::future::ok(()));
                     }
                 }
             }
