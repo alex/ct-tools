@@ -342,17 +342,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "futures-async-macro"
 version = "0.1.0"
-source = "git+https://github.com/alexcrichton/futures-await#f6a9c6a746872d32b350d57b377cd10f1056145f"
+source = "git+https://github.com/alexcrichton/futures-await#f931a0bf0058625e7dd6a8a0c288ffb099e6eee2"
 dependencies = [
  "proc-macro2 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 0.3.15 (git+https://github.com/dtolnay/quote)",
  "syn 0.11.11 (git+https://github.com/dtolnay/syn)",
+ "synom 0.11.3 (git+https://github.com/dtolnay/syn)",
 ]
 
 [[package]]
 name = "futures-await"
 version = "0.1.0"
-source = "git+https://github.com/alexcrichton/futures-await#f6a9c6a746872d32b350d57b377cd10f1056145f"
+source = "git+https://github.com/alexcrichton/futures-await#f931a0bf0058625e7dd6a8a0c288ffb099e6eee2"
 dependencies = [
  "futures 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-async-macro 0.1.0 (git+https://github.com/alexcrichton/futures-await)",
@@ -362,7 +363,7 @@ dependencies = [
 [[package]]
 name = "futures-await-macro"
 version = "0.1.0"
-source = "git+https://github.com/alexcrichton/futures-await#f6a9c6a746872d32b350d57b377cd10f1056145f"
+source = "git+https://github.com/alexcrichton/futures-await#f931a0bf0058625e7dd6a8a0c288ffb099e6eee2"
 
 [[package]]
 name = "futures-cpupool"
