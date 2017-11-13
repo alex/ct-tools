@@ -1,5 +1,4 @@
-use hex::ToHex;
-
+use hex;
 use ring::digest;
 
 
@@ -11,5 +10,5 @@ pub struct Log {
 }
 
 pub fn sha256_hex(data: &[u8]) -> String {
-    digest::digest(&digest::SHA256, data).as_ref().to_hex()
+    hex::encode(digest::digest(&digest::SHA256, data).as_ref())
 }
