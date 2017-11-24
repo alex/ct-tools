@@ -21,7 +21,8 @@ byteorder = "*"
 
 chrono = "*"
 
-clap = "*"
+structopt = "*"
+structopt-derive = "*"
 
 hex = "*"
 

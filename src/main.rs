@@ -1,12 +1,14 @@
 #![feature(conservative_impl_trait, generators, proc_macro)]
 
-extern crate clap;
 extern crate hyper;
 extern crate hyper_rustls;
 extern crate pem;
 #[macro_use]
 extern crate prettytable;
 extern crate rustls;
+extern crate structopt;
+#[macro_use]
+extern crate structopt_derive;
 #[macro_use]
 extern crate tera;
 extern crate tokio_core;
@@ -35,6 +37,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use structopt::StructOpt;
 use tokio_core::reactor::Handle;
 use tokio_process::CommandExt;
 use tokio_rustls::ServerConfigExt;
@@ -55,7 +58,7 @@ fn new_http_client(
         .build(handle)
 }
 
-fn submit(paths: clap::Values, all_logs: bool) {
+fn submit(paths: &[String], all_logs: bool) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = Rc::new(new_http_client(&core.handle()));
 
@@ -66,7 +69,7 @@ fn submit(paths: clap::Values, all_logs: bool) {
     });
 
     let work: Box<Future<Item=(), Error=()>> =
-            Box::new(futures::stream::futures_ordered(paths.map(|path| {
+            Box::new(futures::stream::futures_ordered(paths.iter().map(|path| {
         let path = path.to_string();
 
         let mut contents = Vec::new();
@@ -124,12 +127,12 @@ fn submit(paths: clap::Values, all_logs: bool) {
     core.run(work).unwrap();
 }
 
-fn check(paths: clap::Values) {
+fn check(paths: &[String]) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
 
     let work: Box<futures::Future<Item = (), Error = ()>> =
-            Box::new(futures::stream::futures_ordered(paths.map(|path| {
+            Box::new(futures::stream::futures_ordered(paths.iter().map(|path| {
         let path = path.to_string();
         let mut contents = Vec::new();
         File::open(&path)
@@ -391,65 +394,56 @@ where
     core.run(work).unwrap();
 }
 
-fn main() {
-    let matches = clap::App::new("ct-tools")
-        .subcommand(
-            clap::SubCommand::with_name("submit")
-                .about("Directly submits certificates to CT logs")
-                .arg(
-                    clap::Arg::with_name("path")
-                        .multiple(true)
-                        .required(true)
-                        .help("Path to certificate or chain"),
-                )
-                .arg(clap::Arg::with_name("all-logs").long("--all-logs").help(
-                    "Submit to all logs, instead of just ones trusted by Chrome",
-                )),
-        )
-        .subcommand(
-            clap::SubCommand::with_name("check")
-                .about("Checks whether a certificate exists in CT logs")
-                .arg(
-                    clap::Arg::with_name("path")
-                        .multiple(true)
-                        .required(true)
-                        .help("Path to certificate or chain"),
-                ),
-        )
-        .subcommand(
-            clap::SubCommand::with_name("server")
-                .about("Run an HTTPS server that submits client to CT logs")
-                .arg(clap::Arg::with_name("local-dev").long("--local-dev").help(
-                    "Local development, do not obtain a certificate",
-                ))
-                .arg(
-                    clap::Arg::with_name("domain")
-                        .takes_value(true)
-                        .long("--domain")
-                        .help("Domain this is running as"),
-                )
-                .arg(
-                    clap::Arg::with_name("letsencrypt-env")
-                        .takes_value(true)
-                        .long("--letsencrypt-env")
-                        .possible_values(&["dev", "prod"])
-                        .help("Let's Encrypt environment to use"),
-                ),
-        )
-        .get_matches();
+#[derive(StructOpt)]
+#[structopt(name = "ct-tools")]
+enum Opt {
+    #[structopt(name = "submit", about = "Directly submits certificates to CT logs")]
+    Submit {
+        #[structopt(long = "all-logs",
+                    help = "Submit to all logs, instead of just ones trusted by Chrome")]
+        all_logs: bool,
+        #[structopt(help = "Path to certificate or chain")]
+        paths: Vec<String>,
+    },
 
-    if let Some(matches) = matches.subcommand_matches("submit") {
-        submit(
-            matches.values_of("path").unwrap(),
-            matches.is_present("all-logs"),
-        );
-    } else if let Some(matches) = matches.subcommand_matches("check") {
-        check(matches.values_of("path").unwrap());
-    } else if let Some(matches) = matches.subcommand_matches("server") {
-        server(
-            matches.is_present("local-dev"),
-            matches.value_of("domain"),
-            matches.value_of("letsencrypt-env"),
-        );
+    #[structopt(name = "check", about = "Checks whether a certificate exists in CT logs")]
+    Check {
+        #[structopt(help = "Path to certificate or chain")]
+        paths: Vec<String>,
+    },
+
+    #[structopt(name = "server",
+                about = "Run an HTTPS server that submits client certificates to CT logs")]
+    Server {
+        #[structopt(long = "--local-dev", help = "Local development, do not obtain a certificate")]
+        local_dev: bool,
+        #[structopt(long = "domain", help = "Domain this is running as")]
+        domain: Option<String>,
+        #[structopt(long = "letsencrypt-env", possible_values_raw = "&[\"dev\", \"prod\"]",
+                    help = "Let's Encrypt environment to use")]
+        letsencrypt_env: Option<String>,
+    },
+}
+
+
+fn main() {
+    match Opt::from_args() {
+        Opt::Submit { paths, all_logs } => {
+            submit(&paths, all_logs);
+        }
+        Opt::Check { paths } => {
+            check(&paths);
+        }
+        Opt::Server {
+            local_dev,
+            domain,
+            letsencrypt_env,
+        } => {
+            server(
+                local_dev,
+                domain.as_ref().map(|s| s.as_ref()),
+                letsencrypt_env.as_ref().map(|s| s.as_ref()),
+            );
+        }
     }
 }
