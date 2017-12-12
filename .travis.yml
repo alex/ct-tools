@@ -15,7 +15,7 @@ before_script:
          cargo install --force clippy
       fi
     fi
-  - cargo install-update -i rustfmt
+  - cargo install-update -i rustfmt-nightly
 script:
   - RUSTFLAGS=-Dwarnings cargo build && cargo test
   - cargo fmt -- --write-mode diff
