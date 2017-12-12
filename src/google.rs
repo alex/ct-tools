@@ -5,7 +5,6 @@ use futures::prelude::*;
 use hyper;
 use serde_json;
 
-
 const TRUSTED_LOG_LIST_URL: &str = "https://www.gstatic.com/ct/log_list/log_list.json";
 const ALL_LOG_LIST_URL: &str = "https://www.gstatic.com/ct/log_list/all_logs_list.json";
 

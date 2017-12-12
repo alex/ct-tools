@@ -18,12 +18,12 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
         hyper::Method::Post,
         "https://crt.sh/gen-add-chain".parse().unwrap(),
     );
-    request.headers_mut().set(
-        hyper::header::ContentType::form_url_encoded(),
-    );
-    request.headers_mut().set(
-        hyper::header::Connection::keep_alive(),
-    );
+    request
+        .headers_mut()
+        .set(hyper::header::ContentType::form_url_encoded());
+    request
+        .headers_mut()
+        .set(hyper::header::Connection::keep_alive());
     request.set_body(body.into_bytes());
     // TODO: undo this once lifetime bugs are fixed
     let r = http_client.request(request);
@@ -60,9 +60,9 @@ pub fn is_cert_logged<C: hyper::client::Connect>(
             .parse()
             .unwrap(),
     );
-    request.headers_mut().set(
-        hyper::header::Connection::keep_alive(),
-    );
+    request
+        .headers_mut()
+        .set(hyper::header::Connection::keep_alive());
     let r = http_client.request(request);
     async_block! {
         let response = await!(r).unwrap();

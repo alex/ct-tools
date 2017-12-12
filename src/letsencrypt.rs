@@ -11,7 +11,6 @@ use std::io::{Cursor, Read, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-
 pub trait CertificateCache: Send + Sync {
     fn store_certificate(&self, identifier: &str, chain: &str, private_key: &str);
     fn fetch_certificate(&self, identifier: &str) -> Option<(String, String)>;
@@ -81,7 +80,6 @@ where
     sni_challenges: Mutex<HashMap<String, rustls::sign::CertifiedKey>>,
 }
 
-
 impl<C> AutomaticCertResolver<C>
 where
     C: CertificateCache,
@@ -129,9 +127,7 @@ where
             &domains_to_identifier(&self.acme_url, &self.domains),
             std::str::from_utf8(&cert.cert().to_pem().unwrap()).unwrap(),
             // TODO: ECDSA
-            std::str::from_utf8(
-                &cert.pkey().rsa().unwrap().private_key_to_pem().unwrap(),
-            ).unwrap(),
+            std::str::from_utf8(&cert.pkey().rsa().unwrap().private_key_to_pem().unwrap()).unwrap(),
         );
     }
 
@@ -210,9 +206,7 @@ pub fn openssl_pkey_to_rustls(pkey: &openssl::pkey::PKey) -> rustls::PrivateKey 
 
 fn openssl_pkey_to_rustls_signer(pkey: &openssl::pkey::PKey) -> Box<rustls::sign::SigningKey> {
     // TODO: ECDSA
-    Box::new(
-        rustls::sign::RSASigningKey::new(&openssl_pkey_to_rustls(pkey)).unwrap(),
-    )
+    Box::new(rustls::sign::RSASigningKey::new(&openssl_pkey_to_rustls(pkey)).unwrap())
 }
 
 fn pems_to_rustls(chain_pem: &str, private_key_pem: &str) -> rustls::sign::CertifiedKey {
@@ -237,7 +231,6 @@ where
         server_name: Option<&str>,
         _: &[rustls::SignatureScheme],
     ) -> Option<rustls::sign::CertifiedKey> {
-
         if let Some(sni) = server_name {
             if let Some(cert) = self.sni_challenges.lock().unwrap().get(sni) {
                 return Some(cert.clone());
@@ -268,7 +261,6 @@ fn cert_is_expired(cert: &rustls::Certificate) -> bool {
     let openssl_cert = openssl::x509::X509::from_der(&cert.0).unwrap();
     from_asn1_time(openssl_cert.not_after()) < chrono::Utc::now()
 }
-
 
 fn from_asn1_time(t: &openssl::asn1::Asn1TimeRef) -> chrono::DateTime<chrono::Utc> {
     let dt = chrono::DateTime::parse_from_str(

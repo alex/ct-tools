@@ -1,7 +1,6 @@
 use hex;
 use ring::digest;
 
-
 #[derive(Debug)]
 pub struct Log {
     pub description: String,

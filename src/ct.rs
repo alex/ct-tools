@@ -11,7 +11,6 @@ use std::io::Write;
 use std::time::Duration;
 use tokio_core::reactor::Timeout;
 
-
 #[derive(Debug, Deserialize)]
 pub struct SignedCertificateTimestamp {
     sct_version: u8,
@@ -43,7 +42,6 @@ impl SignedCertificateTimestamp {
     }
 }
 
-
 fn submit_to_log<C: hyper::client::Connect>(
     http_client: &hyper::Client<C>,
     log: &Log,
@@ -55,9 +53,9 @@ fn submit_to_log<C: hyper::client::Connect>(
     }
     url += "ct/v1/add-chain";
     let mut request = hyper::Request::new(hyper::Method::Post, url.parse().unwrap());
-    request.headers_mut().set(
-        hyper::header::ContentType::json(),
-    );
+    request
+        .headers_mut()
+        .set(hyper::header::ContentType::json());
     request.set_body(payload);
     let r = http_client.request(request);
     async_block! {

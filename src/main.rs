@@ -1,7 +1,9 @@
 #![feature(conservative_impl_trait, generators, proc_macro)]
 
+extern crate futures_await as futures;
 extern crate hyper;
 extern crate hyper_rustls;
+extern crate net2;
 extern crate pem;
 #[macro_use]
 extern crate prettytable;
@@ -12,12 +14,10 @@ extern crate structopt_derive;
 #[macro_use]
 extern crate tera;
 extern crate tokio_core;
-extern crate futures_await as futures;
-extern crate tokio_process;
-extern crate tokio_service;
-extern crate net2;
-extern crate tokio_rustls;
 extern crate tokio_io;
+extern crate tokio_process;
+extern crate tokio_rustls;
+extern crate tokio_service;
 
 extern crate ct_tools;
 
@@ -68,62 +68,66 @@ fn submit(paths: &[String], all_logs: bool) {
         core.run(fetch_trusted_ct_logs(&http_client)).unwrap()
     });
 
-    let work: Box<Future<Item=(), Error=()>> =
-            Box::new(futures::stream::futures_ordered(paths.iter().map(|path| {
-        let path = path.to_string();
+    let work: Box<Future<Item = (), Error = ()>> = Box::new(
+        futures::stream::futures_ordered(paths.iter().map(|path| {
+            let path = path.to_string();
 
-        let mut contents = Vec::new();
-        File::open(&path)
-            .unwrap()
-            .read_to_end(&mut contents)
-            .unwrap();
+            let mut contents = Vec::new();
+            File::open(&path)
+                .unwrap()
+                .read_to_end(&mut contents)
+                .unwrap();
 
-        let mut chain = pems_to_chain(&contents);
-        let http_client = Rc::clone(&http_client);
-        let logs = Rc::clone(&logs);
-        async_block! {
-            if chain.len() == 1 {
-                // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
-                // as a glorified AIA chaser.
-                println!(
-                    "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
-                    &path
-                );
-                let new_chain = await!(crtsh::build_chain_for_cert(&http_client, &chain[0]));
-                chain = match new_chain {
-                    Ok(c) => c,
-                    Err(()) => {
-                        println!("[{}] Unable to build a chain", path);
-                        return Ok(futures::future::ok(()));
+            let mut chain = pems_to_chain(&contents);
+            let http_client = Rc::clone(&http_client);
+            let logs = Rc::clone(&logs);
+            async_block! {
+                if chain.len() == 1 {
+                    // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
+                    // as a glorified AIA chaser.
+                    println!(
+                        "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
+                        &path
+                    );
+                    let new_chain = await!(crtsh::build_chain_for_cert(&http_client, &chain[0]));
+                    chain = match new_chain {
+                        Ok(c) => c,
+                        Err(()) => {
+                            println!("[{}] Unable to build a chain", path);
+                            return Ok(futures::future::ok(()));
+                        }
                     }
                 }
-            }
-            println!("[{}] Submitting ...", &path);
-            let timeout = Duration::from_secs(30);
-            let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain, timeout)).unwrap();
+                println!("[{}] Submitting ...", &path);
+                let timeout = Duration::from_secs(30);
+                let scts = await!(
+                    submit_cert_to_logs(&http_client, &logs, &chain, timeout)
+                ).unwrap();
 
-            if !scts.is_empty() {
-                println!(
-                    "[{}] Find the cert on crt.sh: {}",
-                    path,
-                    crtsh::url_for_cert(&chain[0])
-                );
-                let mut table = prettytable::Table::new();
-                table.add_row(row!["Log"]);
-                for (log_idx, _) in scts {
-                    let log = &logs[log_idx];
-                    table.add_row(row![log.description]);
+                if !scts.is_empty() {
+                    println!(
+                        "[{}] Find the cert on crt.sh: {}",
+                        path,
+                        crtsh::url_for_cert(&chain[0])
+                    );
+                    let mut table = prettytable::Table::new();
+                    table.add_row(row!["Log"]);
+                    for (log_idx, _) in scts {
+                        let log = &logs[log_idx];
+                        table.add_row(row![log.description]);
+                    }
+                    table.printstd();
+                    println!();
+                    println!();
+                } else {
+                    println!("[{}] No SCTs obtained", &path);
                 }
-                table.printstd();
-                println!();
-                println!();
-            } else {
-                println!("[{}] No SCTs obtained", &path);
-            }
 
-            Ok(futures::future::ok(()))
-        }
-    })).buffered(4).for_each(|()| { futures::future::ok(()) }));
+                Ok(futures::future::ok(()))
+            }
+        })).buffered(4)
+            .for_each(|()| futures::future::ok(())),
+    );
     core.run(work).unwrap();
 }
 
@@ -131,30 +135,32 @@ fn check(paths: &[String]) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
 
-    let work: Box<futures::Future<Item = (), Error = ()>> =
-            Box::new(futures::stream::futures_ordered(paths.iter().map(|path| {
-        let path = path.to_string();
-        let mut contents = Vec::new();
-        File::open(&path)
-            .unwrap()
-            .read_to_end(&mut contents)
-            .unwrap();
+    let work: Box<futures::Future<Item = (), Error = ()>> = Box::new(
+        futures::stream::futures_ordered(paths.iter().map(|path| {
+            let path = path.to_string();
+            let mut contents = Vec::new();
+            File::open(&path)
+                .unwrap()
+                .read_to_end(&mut contents)
+                .unwrap();
 
-        let chain = pems_to_chain(&contents);
-        let is_logged: Box<Future<Item=bool, Error=()>> = if chain.is_empty() {
-            Box::new(futures::future::ok(false))
-        } else {
-            Box::new(crtsh::is_cert_logged(&http_client, &chain[0]))
-        };
-        async_block! {
-            if await!(is_logged).unwrap() {
-                println!("{} was already logged", path);
+            let chain = pems_to_chain(&contents);
+            let is_logged: Box<Future<Item = bool, Error = ()>> = if chain.is_empty() {
+                Box::new(futures::future::ok(false))
             } else {
-                println!("{} has not been logged", path);
+                Box::new(crtsh::is_cert_logged(&http_client, &chain[0]))
+            };
+            async_block! {
+                if await!(is_logged).unwrap() {
+                    println!("{} was already logged", path);
+                } else {
+                    println!("{} has not been logged", path);
+                }
+                Ok(futures::future::ok(()))
             }
-            Ok(futures::future::ok(()))
-        }
-    })).buffered(16).for_each(|()| { futures::future::ok(()) }));
+        })).buffered(16)
+            .for_each(|()| futures::future::ok(())),
+    );
     core.run(work).unwrap();
 }
 
@@ -182,8 +188,8 @@ fn handle_request<C: hyper::client::Connect>(
         if request.method() == &hyper::Method::Post {
             if let Ok(chain) = await!(crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)) {
                 let timeout = Duration::from_secs(5);
-                let scts = await!(submit_cert_to_logs(&http_client, &logs, &chain, timeout))
-                    .unwrap();
+                let scts =
+                    await!(submit_cert_to_logs(&http_client, &logs, &chain, timeout)).unwrap();
                 if !scts.is_empty() {
                     crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
                     println!("Successfully submitted: {}", sha256_hex(&chain[0]));
@@ -247,15 +253,12 @@ impl rustls::ClientCertVerifier for NoVerificationCertificateVerifier {
     }
 }
 
-
 fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) {
     match (local_dev, domain, letsencrypt_env) {
-        (true, Some(_), _) |
-        (true, _, Some(_)) => {
+        (true, Some(_), _) | (true, _, Some(_)) => {
             panic!("Can't use both --local-dev and --letsencrypt-env or --domain")
         }
-        (_, Some(_), None) |
-        (_, None, Some(_)) => {
+        (_, Some(_), None) | (_, None, Some(_)) => {
             panic!("When using Let's Encrypt, must set both --letsencrypt-env and --domain")
         }
         (false, _, None) => panic!("Must set at least one of --local-dev or --letsencrypt-env"),
@@ -277,10 +280,12 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             "dev" => "https://acme-staging.api.letsencrypt.org/directory",
             _ => unreachable!(),
         };
-        let cert_cache =
-            letsencrypt::DiskCache::new(env::home_dir().unwrap().join(".ct-tools").join(
-                "certificates",
-            ));
+        let cert_cache = letsencrypt::DiskCache::new(
+            env::home_dir()
+                .unwrap()
+                .join(".ct-tools")
+                .join("certificates"),
+        );
         tls_config.cert_resolver = Arc::new(letsencrypt::AutomaticCertResolver::new(
             letsencrypt_url,
             vec![domain.unwrap().to_string()],
@@ -292,9 +297,9 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     // Disable certificate verification. In any normal context, this would be horribly insecure!
     // However, all we're doing is taking the certs and then turning around and submitting them to
     // CT logs, so it doesn't matter if they're verified.
-    tls_config.dangerous().set_certificate_verifier(Arc::new(
-        NoVerificationCertificateVerifier,
-    ));
+    tls_config
+        .dangerous()
+        .set_certificate_verifier(Arc::new(NoVerificationCertificateVerifier));
 
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
@@ -309,18 +314,22 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
 
     // If there aren't at least two threads, the Let's Encrypt integration will deadlock.
     println!("Listening on https://{} ...", addr);
-    serve_https(addr.parse().unwrap(), tls_config, 16, move |handle,
-          tls_session| {
-        let http_client = new_http_client(handle);
-        HttpHandler {
-            templates: Arc::clone(&templates),
-            http_client: Arc::new(http_client),
-            logs: Arc::clone(&logs),
-            handle: handle.clone(),
+    serve_https(
+        addr.parse().unwrap(),
+        tls_config,
+        16,
+        move |handle, tls_session| {
+            let http_client = new_http_client(handle);
+            HttpHandler {
+                templates: Arc::clone(&templates),
+                http_client: Arc::new(http_client),
+                logs: Arc::clone(&logs),
+                handle: handle.clone(),
 
-            client_certs: tls_session.get_peer_certificates(),
-        }
-    });
+                client_certs: tls_session.get_peer_certificates(),
+            }
+        },
+    );
 }
 
 fn serve_https<F, S>(
@@ -345,7 +354,9 @@ fn serve_https<F, S>(
             let new_service = Arc::clone(&new_service);
             thread::Builder::new()
                 .name(format!("worker{}", i))
-                .spawn(move || { _serve(addr, tls_config, &*new_service); })
+                .spawn(move || {
+                    _serve(addr, tls_config, &*new_service);
+                })
                 .unwrap()
         })
         .collect::<Vec<_>>();
@@ -384,12 +395,16 @@ where
         .incoming()
         .for_each(move |(sock, addr)| {
             let handle = handle.clone();
-            tls_config.accept_async(sock).map_err(|_| ()).and_then(move |s| {
-                let http = hyper::server::Http::new();
-                let service = new_service(&handle, s.get_ref().1);
-                http.bind_connection(&handle, s, addr, service);
-                Ok(())
-            }).or_else(|()| Ok(()))
+            tls_config
+                .accept_async(sock)
+                .map_err(|_| ())
+                .and_then(move |s| {
+                    let http = hyper::server::Http::new();
+                    let service = new_service(&handle, s.get_ref().1);
+                    http.bind_connection(&handle, s, addr, service);
+                    Ok(())
+                })
+                .or_else(|()| Ok(()))
         });
     core.run(work).unwrap();
 }
@@ -402,14 +417,12 @@ enum Opt {
         #[structopt(long = "all-logs",
                     help = "Submit to all logs, instead of just ones trusted by Chrome")]
         all_logs: bool,
-        #[structopt(help = "Path to certificate or chain")]
-        paths: Vec<String>,
+        #[structopt(help = "Path to certificate or chain")] paths: Vec<String>,
     },
 
     #[structopt(name = "check", about = "Checks whether a certificate exists in CT logs")]
     Check {
-        #[structopt(help = "Path to certificate or chain")]
-        paths: Vec<String>,
+        #[structopt(help = "Path to certificate or chain")] paths: Vec<String>,
     },
 
     #[structopt(name = "server",
@@ -417,14 +430,12 @@ enum Opt {
     Server {
         #[structopt(long = "--local-dev", help = "Local development, do not obtain a certificate")]
         local_dev: bool,
-        #[structopt(long = "domain", help = "Domain this is running as")]
-        domain: Option<String>,
+        #[structopt(long = "domain", help = "Domain this is running as")] domain: Option<String>,
         #[structopt(long = "letsencrypt-env", possible_values_raw = "&[\"dev\", \"prod\"]",
                     help = "Let's Encrypt environment to use")]
         letsencrypt_env: Option<String>,
     },
 }
-
 
 fn main() {
     match Opt::from_args() {
