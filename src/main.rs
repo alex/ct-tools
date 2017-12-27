@@ -29,7 +29,7 @@ use futures::prelude::*;
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::env;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::Read;
 use std::net::SocketAddr;
 use std::process::{Command, Stdio};
@@ -58,6 +58,16 @@ fn new_http_client(
         .build(handle)
 }
 
+fn compute_paths(paths: &[String]) -> Vec<String> {
+    paths.into_iter().flat_map(|p| {
+        if fs::metadata(p).unwrap().is_dir() {
+            fs::read_dir(p).unwrap().map(|d| d.unwrap().path().to_str().unwrap().to_string()).collect()
+        } else {
+            vec![p.clone()]
+        }
+    }).collect()
+}
+
 fn submit(paths: &[String], all_logs: bool) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = Rc::new(new_http_client(&core.handle()));
@@ -68,8 +78,10 @@ fn submit(paths: &[String], all_logs: bool) {
         core.run(fetch_trusted_ct_logs(&http_client)).unwrap()
     });
 
+    let all_paths = compute_paths(paths);
+
     let work: Box<Future<Item = (), Error = ()>> = Box::new(
-        futures::stream::futures_ordered(paths.iter().map(|path| {
+        futures::stream::futures_ordered(all_paths.iter().map(|path| {
             let path = path.to_string();
 
             let mut contents = Vec::new();
@@ -135,8 +147,10 @@ fn check(paths: &[String]) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());
 
+    let all_paths = compute_paths(paths);
+
     let work: Box<futures::Future<Item = (), Error = ()>> = Box::new(
-        futures::stream::futures_ordered(paths.iter().map(|path| {
+        futures::stream::futures_ordered(all_paths.iter().map(|path| {
             let path = path.to_string();
             let mut contents = Vec::new();
             File::open(&path)
