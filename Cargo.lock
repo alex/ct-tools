@@ -373,7 +373,7 @@ dependencies = [
  "futures-await-quote 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-await-syn 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-await-synom 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc-macro2 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc-macro2 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -386,7 +386,7 @@ name = "futures-await-quote"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "proc-macro2 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc-macro2 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -396,7 +396,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "futures-await-quote 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-await-synom 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc-macro2 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc-macro2 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -406,7 +406,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "futures-await-quote 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc-macro2 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc-macro2 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -810,7 +810,7 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1540,7 +1540,7 @@ dependencies = [
 "checksum pest 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3e2e823a5967bb4cdc6d3e46f47baaf4ecfeae44413a642b74ad44e59e49c7f6"
 "checksum pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "3a8b4c6b8165cd1a1cd4b9b120978131389f64bdaf456435caa41e630edba903"
 "checksum prettytable-rs 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)" = "34dc1f4f6dddab3bf008ecfd4fd2a631b585fbf0af123f34c1324f51a034ff5f"
-"checksum proc-macro2 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "44ba85f109cbd6295e5f4fd7496642a46ec31c022564b551165a8d9bfa0160d6"
+"checksum proc-macro2 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "061ffaa2834e478b583b216d688c9835f5a68a97e6b0ce1ac27e4ec998863ee7"
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 "checksum rand 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)" = "9e7944d95d25ace8f377da3ac7068ce517e4c646754c43a1b1849177bbf72e59"
 "checksum rayon 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b614fe08b6665cb9a231d07ac1364b0ef3cb3698f1239ee0c4c3a88a524f54c8"
