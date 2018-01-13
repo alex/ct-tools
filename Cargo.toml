@@ -29,9 +29,9 @@ hex = "*"
 hyper = ">=0.11"
 hyper-rustls = ">=0.11"
 
-openssl = "*"
+openssl = "0.9.23"
 
-ring = ">=0.12"
+ring = "0.13.0-alpha"
 
 rustls = { version = ">=0.11", features = ["dangerous_configuration"] }
 
@@ -46,3 +46,5 @@ prettytable-rs = "*"
 tera = ">=0.10.4"
 
 url = "*"
+
+webpki = "0.18.0-alpha"

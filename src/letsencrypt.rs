@@ -4,6 +4,7 @@ use acme_client;
 use chrono;
 use openssl;
 use rustls;
+use webpki;
 use std;
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -228,11 +229,11 @@ where
 {
     fn resolve(
         &self,
-        server_name: Option<&str>,
+        server_name: Option<webpki::DNSNameRef>,
         _: &[rustls::SignatureScheme],
     ) -> Option<rustls::sign::CertifiedKey> {
         if let Some(sni) = server_name {
-            if let Some(cert) = self.sni_challenges.lock().unwrap().get(sni) {
+            if let Some(cert) = self.sni_challenges.lock().unwrap().get(sni.into()) {
                 return Some(cert.clone());
             }
         }

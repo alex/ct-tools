@@ -260,10 +260,13 @@ struct NoVerificationCertificateVerifier;
 impl rustls::ClientCertVerifier for NoVerificationCertificateVerifier {
     fn verify_client_cert(
         &self,
-        _: &rustls::RootCertStore,
         _: &[rustls::Certificate],
     ) -> Result<rustls::ClientCertVerified, rustls::TLSError> {
         Ok(rustls::ClientCertVerified::assertion())
+    }
+
+    fn client_auth_root_subjects(&self) -> rustls::DistinguishedNames {
+        rustls::DistinguishedNames::new()
     }
 }
 
@@ -279,8 +282,10 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         _ => {}
     };
 
-    let mut tls_config = rustls::ServerConfig::new();
-    tls_config.client_auth_offer = true;
+    // Disable certificate verification. In any normal context, this would be horribly insecure!
+    // However, all we're doing is taking the certs and then turning around and submitting them to
+    // CT logs, so it doesn't matter if they're verified.
+    let mut tls_config = rustls::ServerConfig::new(Arc::new(NoVerificationCertificateVerifier));
     if local_dev {
         // TODO: not all the details on the cert are perfect, but it's fine.
         let (cert, pkey) = letsencrypt::generate_temporary_cert("localhost");
@@ -308,12 +313,6 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     }
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
-    // Disable certificate verification. In any normal context, this would be horribly insecure!
-    // However, all we're doing is taking the certs and then turning around and submitting them to
-    // CT logs, so it doesn't matter if they're verified.
-    tls_config
-        .dangerous()
-        .set_certificate_verifier(Arc::new(NoVerificationCertificateVerifier));
 
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let http_client = new_http_client(&core.handle());

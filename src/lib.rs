@@ -15,6 +15,7 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate tokio_core;
 extern crate url;
+extern crate webpki;
 
 pub mod common;
 pub mod crtsh;
