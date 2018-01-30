@@ -59,13 +59,19 @@ fn new_http_client(
 }
 
 fn compute_paths(paths: &[String]) -> Vec<String> {
-    paths.into_iter().flat_map(|p| {
-        if fs::metadata(p).unwrap().is_dir() {
-            fs::read_dir(p).unwrap().map(|d| d.unwrap().path().to_str().unwrap().to_string()).collect()
-        } else {
-            vec![p.clone()]
-        }
-    }).collect()
+    paths
+        .into_iter()
+        .flat_map(|p| {
+            if fs::metadata(p).unwrap().is_dir() {
+                fs::read_dir(p)
+                    .unwrap()
+                    .map(|d| d.unwrap().path().to_str().unwrap().to_string())
+                    .collect()
+            } else {
+                vec![p.clone()]
+            }
+        })
+        .collect()
 }
 
 fn submit(paths: &[String], all_logs: bool) {
@@ -430,12 +436,14 @@ enum Opt {
         #[structopt(long = "all-logs",
                     help = "Submit to all logs, instead of just ones trusted by Chrome")]
         all_logs: bool,
-        #[structopt(help = "Path to certificate or chain")] paths: Vec<String>,
+        #[structopt(help = "Path to certificate or chain")]
+        paths: Vec<String>,
     },
 
     #[structopt(name = "check", about = "Checks whether a certificate exists in CT logs")]
     Check {
-        #[structopt(help = "Path to certificate or chain")] paths: Vec<String>,
+        #[structopt(help = "Path to certificate or chain")]
+        paths: Vec<String>,
     },
 
     #[structopt(name = "server",
@@ -443,7 +451,8 @@ enum Opt {
     Server {
         #[structopt(long = "--local-dev", help = "Local development, do not obtain a certificate")]
         local_dev: bool,
-        #[structopt(long = "domain", help = "Domain this is running as")] domain: Option<String>,
+        #[structopt(long = "domain", help = "Domain this is running as")]
+        domain: Option<String>,
         #[structopt(long = "letsencrypt-env", possible_values_raw = "&[\"dev\", \"prod\"]",
                     help = "Let's Encrypt environment to use")]
         letsencrypt_env: Option<String>,

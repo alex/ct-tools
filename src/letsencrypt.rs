@@ -4,13 +4,13 @@ use acme_client;
 use chrono;
 use openssl;
 use rustls;
-use webpki;
 use std;
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Cursor, Read, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use webpki;
 
 pub trait CertificateCache: Send + Sync {
     fn store_certificate(&self, identifier: &str, chain: &str, private_key: &str);
