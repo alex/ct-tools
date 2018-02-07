@@ -99,6 +99,7 @@ fn submit(paths: &[String], all_logs: bool) {
             let mut chain = pems_to_chain(&contents);
             let http_client = Rc::clone(&http_client);
             let logs = Rc::clone(&logs);
+            let handle = core.handle();
             async_block! {
                 if chain.len() == 1 {
                     // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
@@ -119,7 +120,7 @@ fn submit(paths: &[String], all_logs: bool) {
                 println!("[{}] Submitting ...", &path);
                 let timeout = Duration::from_secs(30);
                 let scts = await!(
-                    submit_cert_to_logs(&http_client, &logs, &chain, timeout)
+                    submit_cert_to_logs(handle, &http_client, &logs, &chain, timeout)
                 ).unwrap();
 
                 if !scts.is_empty() {
@@ -208,8 +209,13 @@ fn handle_request<C: hyper::client::Connect>(
         if request.method() == &hyper::Method::Post {
             if let Ok(chain) = await!(crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)) {
                 let timeout = Duration::from_secs(5);
-                let scts =
-                    await!(submit_cert_to_logs(&http_client, &logs, &chain, timeout)).unwrap();
+                let scts = await!(submit_cert_to_logs(
+                    handle.clone(),
+                    &http_client,
+                    &logs,
+                    &chain,
+                    timeout
+                )).unwrap();
                 if !scts.is_empty() {
                     crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
                     println!("Successfully submitted: {}", sha256_hex(&chain[0]));

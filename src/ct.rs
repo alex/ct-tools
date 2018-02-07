@@ -9,6 +9,7 @@ use hyper;
 use serde_json;
 use std::io::Write;
 use std::time::Duration;
+use tokio_core;
 use tokio_core::reactor::Timeout;
 
 #[derive(Debug, Deserialize)]
@@ -86,6 +87,7 @@ pub struct AddChainRequest {
 }
 
 pub fn submit_cert_to_logs<C: hyper::client::Connect>(
+    handle: tokio_core::reactor::Handle,
     http_client: &hyper::Client<C>,
     logs: &[Log],
     cert: &[Vec<u8>],
@@ -99,7 +101,7 @@ pub fn submit_cert_to_logs<C: hyper::client::Connect>(
         .enumerate()
         .map(move |(idx, log)| {
             let payload = payload.clone();
-            let handle = http_client.handle().clone();
+            let handle = handle.clone();
             let s = submit_to_log(http_client, log, payload);
             async_block! {
                 let timeout = Timeout::new(timeout, &handle).unwrap();
