@@ -9,7 +9,6 @@ extern crate pem;
 extern crate prettytable;
 extern crate rustls;
 extern crate structopt;
-#[macro_use]
 extern crate structopt_derive;
 #[macro_use]
 extern crate tera;
@@ -459,7 +458,7 @@ enum Opt {
         local_dev: bool,
         #[structopt(long = "domain", help = "Domain this is running as")]
         domain: Option<String>,
-        #[structopt(long = "letsencrypt-env", possible_values_raw = "&[\"dev\", \"prod\"]",
+        #[structopt(long = "letsencrypt-env", raw(possible_values = "&[\"dev\", \"prod\"]"),
                     help = "Let's Encrypt environment to use")]
         letsencrypt_env: Option<String>,
     },
