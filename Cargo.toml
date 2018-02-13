@@ -13,7 +13,7 @@ tokio-rustls = "*"
 tokio-service = "*"
 net2 = "*"
 
-acme-client = "*"
+acme-client = { version = "*", default-features = false }
 
 base64 = "*"
 
