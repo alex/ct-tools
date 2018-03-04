@@ -156,7 +156,12 @@ fn z_domain(challenge: &acme_client::Challenge) -> String {
     return format!("{}.{}.acme.invalid", z1, z2);
 }
 
-pub fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::pkey::PKey) {
+pub fn generate_temporary_cert(
+    domain: &str,
+) -> (
+    openssl::x509::X509,
+    openssl::pkey::PKey<openssl::pkey::Private>,
+) {
     let pkey = openssl::pkey::PKey::from_rsa(openssl::rsa::Rsa::generate(2048).unwrap()).unwrap();
     let mut cert_builder = openssl::x509::X509Builder::new().unwrap();
     cert_builder.set_version(2).unwrap();
@@ -164,7 +169,7 @@ pub fn generate_temporary_cert(domain: &str) -> (openssl::x509::X509, openssl::p
 
     let mut serial = openssl::bn::BigNum::new().unwrap();
     serial
-        .rand(128, openssl::bn::MSB_MAYBE_ZERO, false)
+        .rand(128, openssl::bn::MsbOption::MAYBE_ZERO, false)
         .unwrap();
     cert_builder
         .set_serial_number(&serial.to_asn1_integer().unwrap())
@@ -201,11 +206,15 @@ pub fn openssl_cert_to_rustls(cert: &openssl::x509::X509) -> rustls::Certificate
     rustls::Certificate(cert.to_der().unwrap())
 }
 
-pub fn openssl_pkey_to_rustls(pkey: &openssl::pkey::PKey) -> rustls::PrivateKey {
+pub fn openssl_pkey_to_rustls(
+    pkey: &openssl::pkey::PKey<openssl::pkey::Private>,
+) -> rustls::PrivateKey {
     rustls::PrivateKey(pkey.rsa().unwrap().private_key_to_der().unwrap())
 }
 
-fn openssl_pkey_to_rustls_signer(pkey: &openssl::pkey::PKey) -> Box<rustls::sign::SigningKey> {
+fn openssl_pkey_to_rustls_signer(
+    pkey: &openssl::pkey::PKey<openssl::pkey::Private>,
+) -> Box<rustls::sign::SigningKey> {
     // TODO: ECDSA
     Box::new(rustls::sign::RSASigningKey::new(&openssl_pkey_to_rustls(pkey)).unwrap())
 }

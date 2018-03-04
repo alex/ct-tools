@@ -29,7 +29,7 @@ hex = "*"
 hyper = ">=0.11"
 hyper-rustls = ">=0.11"
 
-openssl = "0.9.23"
+openssl = ">=0.10"
 
 ring = "0.13.0-alpha"
 
