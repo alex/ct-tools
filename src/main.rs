@@ -20,10 +20,10 @@ extern crate tokio_service;
 
 extern crate ct_tools;
 
-use ct_tools::{crtsh, letsencrypt};
-use ct_tools::common::{Log, sha256_hex};
+use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
+use ct_tools::{crtsh, letsencrypt};
 use futures::prelude::*;
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
@@ -364,10 +364,10 @@ fn serve_https<F, S>(
 ) where
     F: Fn(&Handle, &rustls::ServerSession) -> S + Sync + Send + 'static,
     S: tokio_service::Service<
-        Request = hyper::server::Request,
-        Response = hyper::server::Response,
-        Error = hyper::Error,
-    >
+            Request = hyper::server::Request,
+            Response = hyper::server::Response,
+            Error = hyper::Error,
+        >
         + 'static,
 {
     let tls_config = Arc::new(tls_config);
@@ -395,10 +395,10 @@ fn _serve<F, S>(addr: SocketAddr, tls_config: Arc<rustls::ServerConfig>, new_ser
 where
     F: Fn(&Handle, &rustls::ServerSession) -> S,
     S: tokio_service::Service<
-        Request = hyper::server::Request,
-        Response = hyper::server::Response,
-        Error = hyper::Error,
-    >
+            Request = hyper::server::Request,
+            Response = hyper::server::Response,
+            Error = hyper::Error,
+        >
         + 'static,
 {
     let mut core = tokio_core::reactor::Core::new().unwrap();
@@ -438,8 +438,9 @@ where
 enum Opt {
     #[structopt(name = "submit", about = "Directly submits certificates to CT logs")]
     Submit {
-        #[structopt(long = "all-logs",
-                    help = "Submit to all logs, instead of just ones trusted by Chrome")]
+        #[structopt(
+            long = "all-logs", help = "Submit to all logs, instead of just ones trusted by Chrome"
+        )]
         all_logs: bool,
         #[structopt(help = "Path to certificate or chain")]
         paths: Vec<String>,
@@ -451,15 +452,19 @@ enum Opt {
         paths: Vec<String>,
     },
 
-    #[structopt(name = "server",
-                about = "Run an HTTPS server that submits client certificates to CT logs")]
+    #[structopt(
+        name = "server", about = "Run an HTTPS server that submits client certificates to CT logs"
+    )]
     Server {
         #[structopt(long = "--local-dev", help = "Local development, do not obtain a certificate")]
         local_dev: bool,
         #[structopt(long = "domain", help = "Domain this is running as")]
         domain: Option<String>,
-        #[structopt(long = "letsencrypt-env", raw(possible_values = "&[\"dev\", \"prod\"]"),
-                    help = "Let's Encrypt environment to use")]
+        #[structopt(
+            long = "letsencrypt-env",
+            raw(possible_values = "&[\"dev\", \"prod\"]"),
+            help = "Let's Encrypt environment to use"
+        )]
         letsencrypt_env: Option<String>,
     },
 }
