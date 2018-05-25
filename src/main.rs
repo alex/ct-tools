@@ -1,4 +1,4 @@
-#![feature(generators, proc_macro)]
+#![feature(generators, proc_macro, proc_macro_non_items)]
 
 extern crate futures_await as futures;
 extern crate hyper;
@@ -231,7 +231,7 @@ fn handle_request<C: hyper::client::Connect>(
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .spawn_async(&handle)
+            .spawn_async_with_handle(handle.new_tokio_handle())
             .unwrap();
         let cert_bytes = peer_chain[0].0.clone();
         await!(tokio_io::io::write_all(
