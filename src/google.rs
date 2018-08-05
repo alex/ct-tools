@@ -1,5 +1,6 @@
 use super::common::Log;
 
+use futures::prelude::await;
 use futures::prelude::*;
 
 use hyper;

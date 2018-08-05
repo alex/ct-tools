@@ -1,4 +1,4 @@
-#![feature(generators, proc_macro, proc_macro_non_items)]
+#![feature(generators, proc_macro_non_items, use_extern_macros)]
 
 extern crate futures_await as futures;
 extern crate hyper;
@@ -24,6 +24,7 @@ use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
+use futures::prelude::await;
 use futures::prelude::*;
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
@@ -69,8 +70,7 @@ fn compute_paths(paths: &[String]) -> Vec<String> {
             } else {
                 vec![p.clone()]
             }
-        })
-        .collect()
+        }).collect()
 }
 
 fn submit(paths: &[String], all_logs: bool) {
@@ -179,7 +179,7 @@ fn check(paths: &[String]) {
                 Ok(futures::future::ok(()))
             }
         })).buffered(16)
-            .for_each(|()| futures::future::ok(())),
+        .for_each(|()| futures::future::ok(())),
     );
     core.run(work).unwrap();
 }
@@ -367,8 +367,7 @@ fn serve_https<F, S>(
             Request = hyper::server::Request,
             Response = hyper::server::Response,
             Error = hyper::Error,
-        >
-        + 'static,
+        > + 'static,
 {
     let tls_config = Arc::new(tls_config);
     let new_service = Arc::new(new_service);
@@ -380,10 +379,8 @@ fn serve_https<F, S>(
                 .name(format!("worker{}", i))
                 .spawn(move || {
                     _serve(addr, tls_config, &*new_service);
-                })
-                .unwrap()
-        })
-        .collect::<Vec<_>>();
+                }).unwrap()
+        }).collect::<Vec<_>>();
 
     _serve(addr, tls_config, &*new_service);
     for t in threads {
@@ -398,8 +395,7 @@ where
             Request = hyper::server::Request,
             Response = hyper::server::Response,
             Error = hyper::Error,
-        >
-        + 'static,
+        > + 'static,
 {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let handle = core.handle();
@@ -416,47 +412,57 @@ where
         &addr,
         &core.handle(),
     ).unwrap()
-        .incoming()
-        .for_each(move |(sock, addr)| {
-            let handle = handle.clone();
-            tls_config
-                .accept_async(sock)
-                .map_err(|_| ())
-                .and_then(move |s| {
-                    let http = hyper::server::Http::new();
-                    let service = new_service(&handle, s.get_ref().1);
-                    http.bind_connection(&handle, s, addr, service);
-                    Ok(())
-                })
-                .or_else(|()| Ok(()))
-        });
+    .incoming()
+    .for_each(move |(sock, addr)| {
+        let handle = handle.clone();
+        tls_config
+            .accept_async(sock)
+            .map_err(|_| ())
+            .and_then(move |s| {
+                let http = hyper::server::Http::new();
+                let service = new_service(&handle, s.get_ref().1);
+                http.bind_connection(&handle, s, addr, service);
+                Ok(())
+            }).or_else(|()| Ok(()))
+    });
     core.run(work).unwrap();
 }
 
 #[derive(StructOpt)]
 #[structopt(name = "ct-tools")]
 enum Opt {
-    #[structopt(name = "submit", about = "Directly submits certificates to CT logs")]
+    #[structopt(
+        name = "submit",
+        about = "Directly submits certificates to CT logs"
+    )]
     Submit {
         #[structopt(
-            long = "all-logs", help = "Submit to all logs, instead of just ones trusted by Chrome"
+            long = "all-logs",
+            help = "Submit to all logs, instead of just ones trusted by Chrome"
         )]
         all_logs: bool,
         #[structopt(help = "Path to certificate or chain")]
         paths: Vec<String>,
     },
 
-    #[structopt(name = "check", about = "Checks whether a certificate exists in CT logs")]
+    #[structopt(
+        name = "check",
+        about = "Checks whether a certificate exists in CT logs"
+    )]
     Check {
         #[structopt(help = "Path to certificate or chain")]
         paths: Vec<String>,
     },
 
     #[structopt(
-        name = "server", about = "Run an HTTPS server that submits client certificates to CT logs"
+        name = "server",
+        about = "Run an HTTPS server that submits client certificates to CT logs"
     )]
     Server {
-        #[structopt(long = "--local-dev", help = "Local development, do not obtain a certificate")]
+        #[structopt(
+            long = "--local-dev",
+            help = "Local development, do not obtain a certificate"
+        )]
         local_dev: bool,
         #[structopt(long = "domain", help = "Domain this is running as")]
         domain: Option<String>,

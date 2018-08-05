@@ -88,9 +88,9 @@ where
     pub fn new(acme_url: &str, domains: Vec<String>, cache: C) -> AutomaticCertResolver<C> {
         let acme_directory = acme_client::Directory::from_url(acme_url).unwrap();
         let pems = cache.fetch_certificate(&domains_to_identifier(acme_url, &domains));
-        let active_cert = Mutex::new(pems.map(|(chain_pem, private_key_pem)| {
-            pems_to_rustls(&chain_pem, &private_key_pem)
-        }));
+        let active_cert = Mutex::new(
+            pems.map(|(chain_pem, private_key_pem)| pems_to_rustls(&chain_pem, &private_key_pem)),
+        );
         AutomaticCertResolver {
             domains: domains,
             cert_cache: cache,
@@ -112,12 +112,15 @@ where
             tls_sni_challenge.validate().unwrap();
             self.teardown_sni_challenge(tls_sni_challenge);
         }
-        let cert = self.acme_account
-            .certificate_signer(&self.domains
-                .iter()
-                .map(|s| s.as_ref())
-                .collect::<Vec<&str>>())
-            .sign_certificate()
+        let cert = self
+            .acme_account
+            .certificate_signer(
+                &self
+                    .domains
+                    .iter()
+                    .map(|s| s.as_ref())
+                    .collect::<Vec<&str>>(),
+            ).sign_certificate()
             .unwrap();
         // TODO: intermediates
         let chain = vec![openssl_cert_to_rustls(cert.cert())];

@@ -4,6 +4,7 @@ use base64;
 use byteorder::{BigEndian, WriteBytesExt};
 
 use futures;
+use futures::prelude::await;
 use futures::prelude::*;
 use hyper;
 use serde_json;
@@ -97,7 +98,8 @@ pub fn submit_cert_to_logs<C: hyper::client::Connect>(
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
     }).unwrap();
 
-    let futures = logs.iter()
+    let futures = logs
+        .iter()
         .enumerate()
         .map(move |(idx, log)| {
             let payload = payload.clone();
@@ -110,8 +112,7 @@ pub fn submit_cert_to_logs<C: hyper::client::Connect>(
                     _ => Ok(None),
                 }
             }
-        })
-        .collect::<Vec<_>>();
+        }).collect::<Vec<_>>();
 
     futures::future::join_all(futures).map(|scts| scts.into_iter().filter_map(|s| s).collect())
 }

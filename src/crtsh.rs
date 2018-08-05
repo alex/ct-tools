@@ -1,6 +1,7 @@
 use super::common::sha256_hex;
 use super::ct::AddChainRequest;
 use base64;
+use futures::prelude::await;
 use futures::prelude::*;
 use hyper;
 use serde_json;
