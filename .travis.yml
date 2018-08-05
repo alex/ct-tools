@@ -7,17 +7,7 @@ rust:
 before_script:
   - export PATH=$HOME/.cargo/bin:$PATH
   - type -p cargo-install-update || cargo install --force cargo-update
-  - |
-    if [[  $TRAVIS_RUST_VERSION =~ nightly-* ]]; then
-      if type -p cargo-clippy && cargo-clippy -V; then
-         cargo install-update -i clippy
-      else
-         cargo install --force clippy
-      fi
-    fi
   - cargo install-update -i rustfmt-nightly
 script:
   - RUSTFLAGS=-Dwarnings cargo build && cargo test
   - cargo fmt -- --write-mode diff
-  - |
-    [[ ! $TRAVIS_RUST_VERSION =~ nightly-* ]] || RUSTFLAGS=-Dwarnings cargo clippy
