@@ -1,5 +1,6 @@
 #![feature(generators, proc_macro_non_items, use_extern_macros)]
 
+extern crate dirs;
 extern crate futures_await as futures;
 extern crate hyper;
 extern crate hyper_rustls;
@@ -28,7 +29,6 @@ use futures::prelude::await;
 use futures::prelude::*;
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
-use std::env;
 use std::fs::{self, File};
 use std::io::Read;
 use std::net::SocketAddr;
@@ -311,7 +311,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             _ => unreachable!(),
         };
         let cert_cache = letsencrypt::DiskCache::new(
-            env::home_dir()
+            dirs::home_dir()
                 .unwrap()
                 .join(".ct-tools")
                 .join("certificates"),
@@ -421,6 +421,7 @@ where
             .and_then(move |s| {
                 let http = hyper::server::Http::new();
                 let service = new_service(&handle, s.get_ref().1);
+                #[allow(deprecated)]
                 http.bind_connection(&handle, s, addr, service);
                 Ok(())
             }).or_else(|()| Ok(()))

@@ -21,6 +21,8 @@ byteorder = "*"
 
 chrono = "*"
 
+dirs = "*"
+
 structopt = "*"
 structopt-derive = "*"
 
