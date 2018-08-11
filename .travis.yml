@@ -10,4 +10,4 @@ before_script:
   - cargo install-update -i rustfmt-nightly
 script:
   - RUSTFLAGS=-Dwarnings cargo build && cargo test
-  - cargo fmt -- --write-mode diff
+  - cargo fmt -- --all --check
