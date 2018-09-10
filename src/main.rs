@@ -243,8 +243,8 @@ fn handle_request<C: hyper::client::Connect>(
     }
 
     let mut context = tera::Context::new();
-    context.add("cert", &rendered_cert);
-    context.add("crtsh_url", &crtsh_url);
+    context.insert("cert", &rendered_cert);
+    context.insert("crtsh_url", &crtsh_url);
     let body = templates.render("home.html", &context).unwrap();
     Ok(hyper::server::Response::new().with_body(body))
 }
