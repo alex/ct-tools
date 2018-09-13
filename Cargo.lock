@@ -275,7 +275,7 @@ dependencies = [
 
 [[package]]
 name = "deunicode"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -1110,7 +1110,7 @@ name = "slug"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "deunicode 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "deunicode 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1782,7 +1782,7 @@ dependencies = [
 "checksum crossbeam-utils 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "677d453a17e8bd2b913fa38e8b9cf04bcdbb5be790aa294f2389661d72036015"
 "checksum csv 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7ef22b37c7a51c564a365892c012dc0271221fdcc64c69b19ba4d6fa8bd96d9c"
 "checksum ct-logs 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8ea083d2ff2ec269598a484b9a34cc04262eff81d03ed70cec89dca1794108b8"
-"checksum deunicode 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "5c28b432033d2f8130dac32a1605520b58c2b26fc538297ed28e7c1eab3cb84f"
+"checksum deunicode 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "850878694b7933ca4c9569d30a34b55031b9b139ee1fc7b94a527c4ef960d690"
 "checksum dirs 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "f679c09c1cf5428702cc10f6846c56e4e23420d3a88bcc9335b17c630a7b710b"
 "checksum dtoa 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "6d301140eb411af13d3115f9a562c85cc6b541ade9dfa314132244aaee7489dd"
 "checksum encode_unicode 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7dda4963a6de8b990d05ae23b6d766dde2c65e84e35b297333d137535c65a212"
