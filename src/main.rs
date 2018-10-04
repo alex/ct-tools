@@ -70,7 +70,8 @@ fn compute_paths(paths: &[String]) -> Vec<String> {
             } else {
                 vec![p.clone()]
             }
-        }).collect()
+        })
+        .collect()
 }
 
 fn submit(paths: &[String], all_logs: bool) {
@@ -178,7 +179,8 @@ fn check(paths: &[String]) {
                 }
                 Ok(futures::future::ok(()))
             }
-        })).buffered(16)
+        }))
+        .buffered(16)
         .for_each(|()| futures::future::ok(())),
     );
     core.run(work).unwrap();
@@ -214,7 +216,8 @@ fn handle_request<C: hyper::client::Connect>(
                     &logs,
                     &chain,
                     timeout
-                )).unwrap();
+                ))
+                .unwrap();
                 if !scts.is_empty() {
                     crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
                     println!("Successfully submitted: {}", sha256_hex(&chain[0]));
@@ -237,7 +240,8 @@ fn handle_request<C: hyper::client::Connect>(
         await!(tokio_io::io::write_all(
             process.stdin().take().unwrap(),
             cert_bytes,
-        )).unwrap();
+        ))
+        .unwrap();
         let out = await!(process.wait_with_output()).unwrap();
         rendered_cert = Some(String::from_utf8_lossy(&out.stdout).into_owned());
     }
@@ -379,8 +383,10 @@ fn serve_https<F, S>(
                 .name(format!("worker{}", i))
                 .spawn(move || {
                     _serve(addr, tls_config, &*new_service);
-                }).unwrap()
-        }).collect::<Vec<_>>();
+                })
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
 
     _serve(addr, tls_config, &*new_service);
     for t in threads {
@@ -411,7 +417,8 @@ where
         listener.listen(1024).unwrap(),
         &addr,
         &core.handle(),
-    ).unwrap()
+    )
+    .unwrap()
     .incoming()
     .for_each(move |(sock, addr)| {
         let handle = handle.clone();
@@ -424,7 +431,8 @@ where
                 #[allow(deprecated)]
                 http.bind_connection(&handle, s, addr, service);
                 Ok(())
-            }).or_else(|()| Ok(()))
+            })
+            .or_else(|()| Ok(()))
     });
     core.run(work).unwrap();
 }

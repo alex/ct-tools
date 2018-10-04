@@ -96,7 +96,8 @@ pub fn submit_cert_to_logs<C: hyper::client::Connect>(
 ) -> impl Future<Item = Vec<(usize, SignedCertificateTimestamp)>, Error = ()> {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
-    }).unwrap();
+    })
+    .unwrap();
 
     let futures = logs
         .iter()
@@ -112,7 +113,8 @@ pub fn submit_cert_to_logs<C: hyper::client::Connect>(
                     _ => Ok(None),
                 }
             }
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 
     futures::future::join_all(futures).map(|scts| scts.into_iter().filter_map(|s| s).collect())
 }

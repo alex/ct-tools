@@ -120,7 +120,8 @@ where
                     .iter()
                     .map(|s| s.as_ref())
                     .collect::<Vec<&str>>(),
-            ).sign_certificate()
+            )
+            .sign_certificate()
             .unwrap();
         // TODO: intermediates
         let chain = vec![openssl_cert_to_rustls(cert.cert())];
@@ -279,6 +280,7 @@ fn from_asn1_time(t: &openssl::asn1::Asn1TimeRef) -> chrono::DateTime<chrono::Ut
     let dt = chrono::DateTime::parse_from_str(
         &t.to_string().replace(" GMT", " +00:00"),
         "%b %e %T %Y %z",
-    ).unwrap();
+    )
+    .unwrap();
     chrono::DateTime::<chrono::Utc>::from_utc(dt.naive_utc(), chrono::Utc)
 }
