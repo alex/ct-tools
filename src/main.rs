@@ -1,4 +1,4 @@
-#![feature(generators, proc_macro_non_items)]
+#![feature(generators, proc_macro_hygiene)]
 
 extern crate dirs;
 extern crate futures_await as futures;

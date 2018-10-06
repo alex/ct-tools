@@ -1,4 +1,4 @@
-#![feature(proc_macro_non_items, generators)]
+#![feature(proc_macro_hygiene, generators)]
 
 extern crate acme_client;
 extern crate base64;
