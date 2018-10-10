@@ -40,7 +40,6 @@ use std::time::Duration;
 use structopt::StructOpt;
 use tokio_core::reactor::Handle;
 use tokio_process::CommandExt;
-use tokio_rustls::ServerConfigExt;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
     pem::parse_many(data)
@@ -51,11 +50,8 @@ fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
 }
 
 fn new_http_client(
-    handle: &tokio_core::reactor::Handle,
-) -> hyper::Client<hyper_rustls::HttpsConnector> {
-    hyper::Client::configure()
-        .connector(hyper_rustls::HttpsConnector::new(4, handle))
-        .build(handle)
+) -> hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>> {
+    hyper::Client::builder().build(hyper_rustls::HttpsConnector::new(4))
 }
 
 fn compute_paths(paths: &[String]) -> Vec<String> {
@@ -76,7 +72,7 @@ fn compute_paths(paths: &[String]) -> Vec<String> {
 
 fn submit(paths: &[String], all_logs: bool) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
-    let http_client = Rc::new(new_http_client(&core.handle()));
+    let http_client = Rc::new(new_http_client());
 
     let logs = Rc::new(if all_logs {
         core.run(fetch_all_ct_logs(&http_client)).unwrap()
@@ -152,7 +148,7 @@ fn submit(paths: &[String], all_logs: bool) {
 
 fn check(paths: &[String]) {
     let mut core = tokio_core::reactor::Core::new().unwrap();
-    let http_client = new_http_client(&core.handle());
+    let http_client = new_http_client();
 
     let all_paths = compute_paths(paths);
 
@@ -186,7 +182,7 @@ fn check(paths: &[String]) {
     core.run(work).unwrap();
 }
 
-struct HttpHandler<C: hyper::client::Connect> {
+struct HttpHandler<C: hyper::client::connect::Connect> {
     handle: tokio_core::reactor::Handle,
     templates: Arc<tera::Tera>,
     http_client: Arc<hyper::Client<C>>,
@@ -196,18 +192,18 @@ struct HttpHandler<C: hyper::client::Connect> {
 }
 
 #[async]
-fn handle_request<C: hyper::client::Connect>(
-    request: hyper::server::Request,
+fn handle_request<C: hyper::client::connect::Connect + 'static>(
+    request: hyper::Request<hyper::Body>,
     templates: Arc<tera::Tera>,
     http_client: Arc<hyper::Client<C>>,
     logs: Arc<Vec<Log>>,
     handle: tokio_core::reactor::Handle,
     client_certs: Option<Vec<rustls::Certificate>>,
-) -> Result<hyper::server::Response, hyper::Error> {
+) -> Result<hyper::Response<hyper::Body>, hyper::Error> {
     let mut crtsh_url = None;
     let mut rendered_cert = None;
     if let Some(peer_chain) = client_certs {
-        if request.method() == &hyper::Method::Post {
+        if request.method() == &hyper::Method::POST {
             if let Ok(chain) = await!(crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)) {
                 let timeout = Duration::from_secs(5);
                 let scts = await!(submit_cert_to_logs(
@@ -250,16 +246,19 @@ fn handle_request<C: hyper::client::Connect>(
     context.insert("cert", &rendered_cert);
     context.insert("crtsh_url", &crtsh_url);
     let body = templates.render("home.html", &context).unwrap();
-    Ok(hyper::server::Response::new().with_body(body))
+    Ok(hyper::Response::builder()
+        .status(hyper::StatusCode::OK)
+        .body(body.into())
+        .unwrap())
 }
 
-impl<C: hyper::client::Connect> hyper::server::Service for HttpHandler<C> {
-    type Request = hyper::server::Request;
-    type Response = hyper::server::Response;
+impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service for HttpHandler<C> {
+    type ReqBody = hyper::Body;
+    type ResBody = hyper::Body;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+    type Future = Box<Future<Item = hyper::Response<Self::ResBody>, Error = Self::Error>>;
 
-    fn call(&self, request: hyper::server::Request) -> Self::Future {
+    fn call(&mut self, request: hyper::Request<hyper::Body>) -> Self::Future {
         Box::new(handle_request(
             request,
             Arc::clone(&self.templates),
@@ -330,7 +329,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     tls_config.ticketer = rustls::Ticketer::new();
 
     let mut core = tokio_core::reactor::Core::new().unwrap();
-    let http_client = new_http_client(&core.handle());
+    let http_client = new_http_client();
     let logs = Arc::new(core.run(fetch_trusted_ct_logs(&http_client)).unwrap());
     let templates = Arc::new(compile_templates!("templates/*"));
 
@@ -347,7 +346,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         tls_config,
         16,
         move |handle, tls_session| {
-            let http_client = new_http_client(handle);
+            let http_client = new_http_client();
             HttpHandler {
                 templates: Arc::clone(&templates),
                 http_client: Arc::new(http_client),
@@ -367,17 +366,14 @@ fn serve_https<F, S>(
     new_service: F,
 ) where
     F: Fn(&Handle, &rustls::ServerSession) -> S + Sync + Send + 'static,
-    S: tokio_service::Service<
-            Request = hyper::server::Request,
-            Response = hyper::server::Response,
-            Error = hyper::Error,
-        > + 'static,
+    S: hyper::service::Service<ReqBody = hyper::Body, ResBody = hyper::Body, Error = hyper::Error>
+        + 'static,
+    S::Future: Send,
 {
-    let tls_config = Arc::new(tls_config);
+    let tls_config = tokio_rustls::TlsAcceptor::from(Arc::new(tls_config));
     let new_service = Arc::new(new_service);
     let threads = (0..threads - 1)
         .map(|i| {
-            let tls_config = Arc::clone(&tls_config);
             let new_service = Arc::clone(&new_service);
             thread::Builder::new()
                 .name(format!("worker{}", i))
@@ -394,14 +390,12 @@ fn serve_https<F, S>(
     }
 }
 
-fn _serve<F, S>(addr: SocketAddr, tls_config: Arc<rustls::ServerConfig>, new_service: &F)
+fn _serve<F, S>(addr: SocketAddr, tls_config: tokio_rustls::TlsAcceptor, new_service: &F)
 where
     F: Fn(&Handle, &rustls::ServerSession) -> S,
-    S: tokio_service::Service<
-            Request = hyper::server::Request,
-            Response = hyper::server::Response,
-            Error = hyper::Error,
-        > + 'static,
+    S: hyper::service::Service<ReqBody = hyper::Body, ResBody = hyper::Body, Error = hyper::Error>
+        + 'static,
+    S::Future: Send,
 {
     let mut core = tokio_core::reactor::Core::new().unwrap();
     let handle = core.handle();
@@ -423,13 +417,13 @@ where
     .for_each(move |(sock, addr)| {
         let handle = handle.clone();
         tls_config
-            .accept_async(sock)
+            .accept(sock)
             .map_err(|_| ())
             .and_then(move |s| {
-                let http = hyper::server::Http::new();
+                let http = hyper::server::conn::Http::new();
                 let service = new_service(&handle, s.get_ref().1);
-                #[allow(deprecated)]
-                http.bind_connection(&handle, s, addr, service);
+                let conn = http.serve_connection(s, service);
+                hyper::rt::spawn(conn);
                 Ok(())
             })
             .or_else(|()| Ok(()))

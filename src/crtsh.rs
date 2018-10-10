@@ -7,7 +7,7 @@ use hyper;
 use serde_json;
 use url;
 
-pub fn build_chain_for_cert<C: hyper::client::Connect>(
+pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     cert: &[u8],
 ) -> impl Future<Item = Vec<Vec<u8>>, Error = ()> {
@@ -15,17 +15,13 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
         .append_pair("b64cert", &base64::encode(&cert))
         .append_pair("onlyonechain", "Y")
         .finish();
-    let mut request = hyper::Request::new(
-        hyper::Method::Post,
-        "https://crt.sh/gen-add-chain".parse().unwrap(),
-    );
-    request
-        .headers_mut()
-        .set(hyper::header::ContentType::form_url_encoded());
-    request
-        .headers_mut()
-        .set(hyper::header::Connection::keep_alive());
-    request.set_body(body.into_bytes());
+    let request = hyper::Request::builder()
+        .method("POST")
+        .uri("https://crt.sh/gen-add-chain")
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .header("Connection", "keep-alive")
+        .body(body.into_bytes().into())
+        .unwrap();
     // TODO: undo this once lifetime bugs are fixed
     let r = http_client.request(request);
     async_block! {
@@ -35,11 +31,11 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
             Err(_) => return Err(()),
         };
 
-        if response.status() == hyper::StatusCode::NotFound {
+        if response.status() == hyper::StatusCode::NOT_FOUND {
             return Err(());
         }
 
-        let body = await!(response.body().concat2()).unwrap();
+        let body = await!(response.into_body().concat2()).unwrap();
         let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
         Ok(
             add_chain_request
@@ -51,23 +47,20 @@ pub fn build_chain_for_cert<C: hyper::client::Connect>(
     }
 }
 
-pub fn is_cert_logged<C: hyper::client::Connect>(
+pub fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     cert: &[u8],
 ) -> impl Future<Item = bool, Error = ()> {
-    let mut request = hyper::Request::new(
-        hyper::Method::Get,
-        format!("https://crt.sh/?d={}", sha256_hex(cert))
-            .parse()
-            .unwrap(),
-    );
-    request
-        .headers_mut()
-        .set(hyper::header::Connection::keep_alive());
+    let request = hyper::Request::builder()
+        .method("GET")
+        .uri(format!("https://crt.sh/?d={}", sha256_hex(cert)))
+        .header("Connection", "keep-alive")
+        .body(hyper::Body::empty())
+        .unwrap();
     let r = http_client.request(request);
     async_block! {
         let response = await!(r).unwrap();
-        Ok(response.status() == hyper::StatusCode::Ok)
+        Ok(response.status() == hyper::StatusCode::OK)
     }
 }
 

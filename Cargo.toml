@@ -33,7 +33,7 @@ hyper-rustls = ">=0.11"
 
 openssl = ">=0.10"
 
-ring = "0.13.0-alpha"
+ring = "*"
 
 rustls = { version = ">=0.11", features = ["dangerous_configuration"] }
 
@@ -49,4 +49,4 @@ tera = ">=0.10.4"
 
 url = "*"
 
-webpki = "0.18.0-alpha"
+webpki = ">=0.18.0"

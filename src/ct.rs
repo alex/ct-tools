@@ -44,7 +44,7 @@ impl SignedCertificateTimestamp {
     }
 }
 
-fn submit_to_log<C: hyper::client::Connect>(
+fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     log: &Log,
     payload: Vec<u8>,
@@ -54,11 +54,13 @@ fn submit_to_log<C: hyper::client::Connect>(
         url += "/";
     }
     url += "ct/v1/add-chain";
-    let mut request = hyper::Request::new(hyper::Method::Post, url.parse().unwrap());
-    request
-        .headers_mut()
-        .set(hyper::header::ContentType::json());
-    request.set_body(payload);
+
+    let request = hyper::Request::builder()
+        .method("POST")
+        .uri(url)
+        .header("Content-Type", "application/json")
+        .body(payload.into())
+        .unwrap();
     let r = http_client.request(request);
     async_block! {
         let response = match await!(r) {
@@ -76,7 +78,7 @@ fn submit_to_log<C: hyper::client::Connect>(
 
         // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS
         // in the face of a dumb or malicious log.
-        let body = await!(response.body().take(10 * 1024 * 1024).concat2())
+        let body = await!(response.into_body().take(10 * 1024 * 1024).concat2())
             .unwrap();
         Ok(serde_json::from_slice(&body).unwrap())
     }
@@ -87,7 +89,7 @@ pub struct AddChainRequest {
     pub chain: Vec<String>,
 }
 
-pub fn submit_cert_to_logs<C: hyper::client::Connect>(
+pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
     handle: tokio_core::reactor::Handle,
     http_client: &hyper::Client<C>,
     logs: &[Log],
