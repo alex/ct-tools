@@ -440,10 +440,7 @@ where
 #[derive(StructOpt)]
 #[structopt(name = "ct-tools")]
 enum Opt {
-    #[structopt(
-        name = "submit",
-        about = "Directly submits certificates to CT logs"
-    )]
+    #[structopt(name = "submit", about = "Directly submits certificates to CT logs")]
     Submit {
         #[structopt(
             long = "all-logs",
