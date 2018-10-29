@@ -15,7 +15,7 @@ net2 = "*"
 
 acme-client = { version = "*", default-features = false }
 
-base64 = "*"
+base64 = ">=0.10"
 
 byteorder = "*"
 
