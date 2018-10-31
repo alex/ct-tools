@@ -6,6 +6,8 @@ rust:
   - nightly
 before_script:
   - rustup component add rustfmt-preview
+  - cargo install cargo-audit
 script:
   - RUSTFLAGS=-Dwarnings cargo build && cargo test
   - cargo fmt --all -- --check
+  - cargo audit
