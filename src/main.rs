@@ -256,7 +256,7 @@ impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service for H
     type ReqBody = hyper::Body;
     type ResBody = hyper::Body;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = hyper::Response<Self::ResBody>, Error = Self::Error>>;
+    type Future = Box<Future<Item = hyper::Response<Self::ResBody>, Error = Self::Error> + Send>;
 
     fn call(&mut self, request: hyper::Request<hyper::Body>) -> Self::Future {
         Box::new(handle_request(
