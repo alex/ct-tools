@@ -10,8 +10,7 @@ use hyper;
 use serde_json;
 use std::io::Write;
 use std::time::Duration;
-use tokio_core;
-use tokio_core::reactor::Timeout;
+use tokio::prelude::FutureExt;
 
 #[derive(Debug, Deserialize)]
 pub struct SignedCertificateTimestamp {
@@ -90,7 +89,6 @@ pub struct AddChainRequest {
 }
 
 pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
-    handle: tokio_core::reactor::Handle,
     http_client: &hyper::Client<C>,
     logs: &[Log],
     cert: &[Vec<u8>],
@@ -106,12 +104,10 @@ pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
         .enumerate()
         .map(move |(idx, log)| {
             let payload = payload.clone();
-            let handle = handle.clone();
-            let s = submit_to_log(http_client, log, payload);
+            let s = submit_to_log(http_client, log, payload).timeout(timeout);
             async_block! {
-                let timeout = Timeout::new(timeout, &handle).unwrap();
-                match await!(s.select2(timeout)) {
-                    Ok(futures::future::Either::A((sct, _))) => Ok(Some((idx, sct))),
+                match await!(s) {
+                    Ok(sct) => Ok(Some((idx, sct))),
                     _ => Ok(None),
                 }
             }

@@ -38,7 +38,6 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use structopt::StructOpt;
-use tokio_core::reactor::Handle;
 use tokio_process::CommandExt;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
@@ -95,7 +94,6 @@ fn submit(paths: &[String], all_logs: bool) {
             let mut chain = pems_to_chain(&contents);
             let http_client = Rc::clone(&http_client);
             let logs = Rc::clone(&logs);
-            let handle = core.handle();
             async_block! {
                 if chain.len() == 1 {
                     // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
@@ -116,7 +114,7 @@ fn submit(paths: &[String], all_logs: bool) {
                 println!("[{}] Submitting ...", &path);
                 let timeout = Duration::from_secs(30);
                 let scts = await!(
-                    submit_cert_to_logs(handle, &http_client, &logs, &chain, timeout)
+                    submit_cert_to_logs(&http_client, &logs, &chain, timeout)
                 ).unwrap();
 
                 if !scts.is_empty() {
@@ -183,7 +181,6 @@ fn check(paths: &[String]) {
 }
 
 struct HttpHandler<C: hyper::client::connect::Connect> {
-    handle: tokio_core::reactor::Handle,
     templates: Arc<tera::Tera>,
     http_client: Arc<hyper::Client<C>>,
     logs: Arc<Vec<Log>>,
@@ -197,7 +194,6 @@ fn handle_request<C: hyper::client::connect::Connect + 'static>(
     templates: Arc<tera::Tera>,
     http_client: Arc<hyper::Client<C>>,
     logs: Arc<Vec<Log>>,
-    handle: tokio_core::reactor::Handle,
     client_certs: Option<Vec<rustls::Certificate>>,
 ) -> Result<hyper::Response<hyper::Body>, hyper::Error> {
     let mut crtsh_url = None;
@@ -207,7 +203,6 @@ fn handle_request<C: hyper::client::connect::Connect + 'static>(
             if let Ok(chain) = await!(crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)) {
                 let timeout = Duration::from_secs(5);
                 let scts = await!(submit_cert_to_logs(
-                    handle.clone(),
                     &http_client,
                     &logs,
                     &chain,
@@ -230,7 +225,7 @@ fn handle_request<C: hyper::client::connect::Connect + 'static>(
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .spawn_async_with_handle(handle.new_tokio_handle())
+            .spawn_async()
             .unwrap();
         let cert_bytes = peer_chain[0].0.clone();
         await!(tokio_io::io::write_all(
@@ -264,7 +259,6 @@ impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service for H
             Arc::clone(&self.templates),
             Arc::clone(&self.http_client),
             Arc::clone(&self.logs),
-            self.handle.clone(),
             self.client_certs.clone(),
         ))
     }
@@ -306,7 +300,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         tls_config.set_single_cert(
             vec![letsencrypt::openssl_cert_to_rustls(&cert)],
             letsencrypt::openssl_pkey_to_rustls(&pkey),
-        );
+        ).unwrap();
     } else {
         let letsencrypt_url = match letsencrypt_env.unwrap() {
             "prod" => "https://acme-v01.api.letsencrypt.org/directory",
@@ -345,13 +339,12 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         addr.parse().unwrap(),
         tls_config,
         16,
-        move |handle, tls_session| {
+        move |tls_session| {
             let http_client = new_http_client();
             HttpHandler {
                 templates: Arc::clone(&templates),
                 http_client: Arc::new(http_client),
                 logs: Arc::clone(&logs),
-                handle: handle.clone(),
 
                 client_certs: tls_session.get_peer_certificates(),
             }
@@ -365,16 +358,17 @@ fn serve_https<F, S>(
     threads: usize,
     new_service: F,
 ) where
-    F: Fn(&Handle, &rustls::ServerSession) -> S + Sync + Send + 'static,
+    F: Fn(&rustls::ServerSession) -> S + Sync + Send + 'static,
     S: hyper::service::Service<ReqBody = hyper::Body, ResBody = hyper::Body, Error = hyper::Error>
         + 'static,
     S::Future: Send,
 {
-    let tls_config = tokio_rustls::TlsAcceptor::from(Arc::new(tls_config));
+    let tls_config = Arc::new(tls_config);
     let new_service = Arc::new(new_service);
     let threads = (0..threads - 1)
         .map(|i| {
             let new_service = Arc::clone(&new_service);
+            let tls_config = Arc::clone(&tls_config);
             thread::Builder::new()
                 .name(format!("worker{}", i))
                 .spawn(move || {
@@ -384,21 +378,20 @@ fn serve_https<F, S>(
         })
         .collect::<Vec<_>>();
 
-    _serve(addr, tls_config, &*new_service);
+    _serve(addr, Arc::clone(&tls_config), &*new_service);
     for t in threads {
         t.join().unwrap();
     }
 }
 
-fn _serve<F, S>(addr: SocketAddr, tls_config: tokio_rustls::TlsAcceptor, new_service: &F)
+fn _serve<F, S>(addr: SocketAddr, tls_config: Arc<rustls::ServerConfig>, new_service: &F)
 where
-    F: Fn(&Handle, &rustls::ServerSession) -> S,
+    F: Fn(&rustls::ServerSession) -> S,
     S: hyper::service::Service<ReqBody = hyper::Body, ResBody = hyper::Body, Error = hyper::Error>
         + 'static,
     S::Future: Send,
 {
     let mut core = tokio_core::reactor::Core::new().unwrap();
-    let handle = core.handle();
 
     let listener = match addr {
         SocketAddr::V4(_) => net2::TcpBuilder::new_v4().unwrap(),
@@ -407,6 +400,7 @@ where
     listener.reuse_port(true).unwrap();
     listener.reuse_address(true).unwrap();
     listener.bind(addr).unwrap();
+    let tls_acceptor = tokio_rustls::TlsAcceptor::from(tls_config);
     let work = tokio_core::net::TcpListener::from_listener(
         listener.listen(1024).unwrap(),
         &addr,
@@ -414,14 +408,13 @@ where
     )
     .unwrap()
     .incoming()
-    .for_each(move |(sock, addr)| {
-        let handle = handle.clone();
-        tls_config
+    .for_each(move |(sock, _addr)| {
+        tls_acceptor
             .accept(sock)
             .map_err(|_| ())
             .and_then(move |s| {
                 let http = hyper::server::conn::Http::new();
-                let service = new_service(&handle, s.get_ref().1);
+                let service = new_service(s.get_ref().1);
                 let conn = http.serve_connection(s, service);
                 hyper::rt::spawn(conn);
                 Ok(())

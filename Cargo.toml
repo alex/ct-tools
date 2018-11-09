@@ -6,6 +6,7 @@ authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
 [dependencies]
 futures = "*"
 futures-await = "*"
+tokio = "*"
 tokio-core = "*"
 tokio-io = "*"
 tokio-process = "*"
