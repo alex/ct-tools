@@ -202,13 +202,8 @@ fn handle_request<C: hyper::client::connect::Connect + 'static>(
         if request.method() == &hyper::Method::POST {
             if let Ok(chain) = await!(crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)) {
                 let timeout = Duration::from_secs(5);
-                let scts = await!(submit_cert_to_logs(
-                    &http_client,
-                    &logs,
-                    &chain,
-                    timeout
-                ))
-                .unwrap();
+                let scts =
+                    await!(submit_cert_to_logs(&http_client, &logs, &chain, timeout)).unwrap();
                 if !scts.is_empty() {
                     crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
                     println!("Successfully submitted: {}", sha256_hex(&chain[0]));
@@ -297,10 +292,12 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     if local_dev {
         // TODO: not all the details on the cert are perfect, but it's fine.
         let (cert, pkey) = letsencrypt::generate_temporary_cert("localhost");
-        tls_config.set_single_cert(
-            vec![letsencrypt::openssl_cert_to_rustls(&cert)],
-            letsencrypt::openssl_pkey_to_rustls(&pkey),
-        ).unwrap();
+        tls_config
+            .set_single_cert(
+                vec![letsencrypt::openssl_cert_to_rustls(&cert)],
+                letsencrypt::openssl_pkey_to_rustls(&pkey),
+            )
+            .unwrap();
     } else {
         let letsencrypt_url = match letsencrypt_env.unwrap() {
             "prod" => "https://acme-v01.api.letsencrypt.org/directory",
@@ -335,21 +332,16 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
 
     // If there aren't at least two threads, the Let's Encrypt integration will deadlock.
     println!("Listening on https://{} ...", addr);
-    serve_https(
-        addr.parse().unwrap(),
-        tls_config,
-        16,
-        move |tls_session| {
-            let http_client = new_http_client();
-            HttpHandler {
-                templates: Arc::clone(&templates),
-                http_client: Arc::new(http_client),
-                logs: Arc::clone(&logs),
+    serve_https(addr.parse().unwrap(), tls_config, 16, move |tls_session| {
+        let http_client = new_http_client();
+        HttpHandler {
+            templates: Arc::clone(&templates),
+            http_client: Arc::new(http_client),
+            logs: Arc::clone(&logs),
 
-                client_certs: tls_session.get_peer_certificates(),
-            }
-        },
-    );
+            client_certs: tls_session.get_peer_certificates(),
+        }
+    });
 }
 
 fn serve_https<F, S>(
@@ -360,7 +352,8 @@ fn serve_https<F, S>(
 ) where
     F: Fn(&rustls::ServerSession) -> S + Sync + Send + 'static,
     S: hyper::service::Service<ReqBody = hyper::Body, ResBody = hyper::Body, Error = hyper::Error>
-        + Send + 'static,
+        + Send
+        + 'static,
     S::Future: Send,
 {
     let tls_config = Arc::new(tls_config);
@@ -388,7 +381,8 @@ fn _serve<F, S>(addr: SocketAddr, tls_config: Arc<rustls::ServerConfig>, new_ser
 where
     F: Fn(&rustls::ServerSession) -> S,
     S: hyper::service::Service<ReqBody = hyper::Body, ResBody = hyper::Body, Error = hyper::Error>
-        + Send + 'static,
+        + Send
+        + 'static,
     S::Future: Send,
 {
     let mut core = tokio_core::reactor::Core::new().unwrap();
