@@ -360,7 +360,7 @@ fn serve_https<F, S>(
 ) where
     F: Fn(&rustls::ServerSession) -> S + Sync + Send + 'static,
     S: hyper::service::Service<ReqBody = hyper::Body, ResBody = hyper::Body, Error = hyper::Error>
-        + 'static,
+        + Send + 'static,
     S::Future: Send,
 {
     let tls_config = Arc::new(tls_config);
@@ -388,7 +388,7 @@ fn _serve<F, S>(addr: SocketAddr, tls_config: Arc<rustls::ServerConfig>, new_ser
 where
     F: Fn(&rustls::ServerSession) -> S,
     S: hyper::service::Service<ReqBody = hyper::Body, ResBody = hyper::Body, Error = hyper::Error>
-        + 'static,
+        + Send + 'static,
     S::Future: Send,
 {
     let mut core = tokio_core::reactor::Core::new().unwrap();
@@ -415,7 +415,7 @@ where
             .and_then(move |s| {
                 let http = hyper::server::conn::Http::new();
                 let service = new_service(s.get_ref().1);
-                let conn = http.serve_connection(s, service);
+                let conn = http.serve_connection(s, service).map_err(|_| ());
                 hyper::rt::spawn(conn);
                 Ok(())
             })
