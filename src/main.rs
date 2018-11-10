@@ -261,6 +261,10 @@ impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service for H
 
 struct NoVerificationCertificateVerifier;
 impl rustls::ClientCertVerifier for NoVerificationCertificateVerifier {
+    fn client_auth_mandatory(&self) -> bool {
+        false
+    }
+
     fn verify_client_cert(
         &self,
         _: &[rustls::Certificate],
@@ -325,7 +329,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     let templates = Arc::new(compile_templates!("templates/*"));
 
     let addr = if local_dev {
-        "127.0.0.1:1337"
+        "0.0.0.0:8000"
     } else {
         "0.0.0.0:443"
     };
