@@ -4,7 +4,6 @@ use base64;
 use byteorder::{BigEndian, WriteBytesExt};
 
 use futures;
-use futures::prelude::await;
 use futures::prelude::*;
 use hyper;
 use serde_json;
@@ -61,7 +60,7 @@ fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
         .body(payload.into())
         .unwrap();
     let r = http_client.request(request);
-    async_block! {
+    async {
         let response = match await!(r) {
             Ok(r) => r,
             // TODO: maybe not all of these should be silently ignored.
@@ -105,7 +104,7 @@ pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
         .map(move |(idx, log)| {
             let payload = payload.clone();
             let s = submit_to_log(http_client, log, payload).timeout(timeout);
-            async_block! {
+            async {
                 match await!(s) {
                     Ok(sct) => Ok(Some((idx, sct))),
                     _ => Ok(None),

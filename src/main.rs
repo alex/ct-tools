@@ -1,7 +1,7 @@
-#![feature(generators, proc_macro_hygiene)]
+#![feature(async_await, await_macro, futures_api, generators, proc_macro_hygiene)]
 
 extern crate dirs;
-extern crate futures_await as futures;
+extern crate futures;
 extern crate hyper;
 extern crate hyper_rustls;
 extern crate net2;
@@ -25,8 +25,7 @@ use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
-use futures::prelude::await;
-use futures::prelude::*;
+use futures::Future;
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::fs::{self, File};
@@ -94,7 +93,7 @@ fn submit(paths: &[String], all_logs: bool) {
             let mut chain = pems_to_chain(&contents);
             let http_client = Rc::clone(&http_client);
             let logs = Rc::clone(&logs);
-            async_block! {
+            async {
                 if chain.len() == 1 {
                     // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
                     // as a glorified AIA chaser.
@@ -165,7 +164,7 @@ fn check(paths: &[String]) {
             } else {
                 Box::new(crtsh::is_cert_logged(&http_client, &chain[0]))
             };
-            async_block! {
+            async {
                 if await!(is_logged).unwrap() {
                     println!("{} was already logged", path);
                 } else {
@@ -188,8 +187,7 @@ struct HttpHandler<C: hyper::client::connect::Connect> {
     client_certs: Option<Vec<rustls::Certificate>>,
 }
 
-#[async]
-fn handle_request<C: hyper::client::connect::Connect + 'static>(
+async fn handle_request<C: hyper::client::connect::Connect + 'static>(
     request: hyper::Request<hyper::Body>,
     templates: Arc<tera::Tera>,
     http_client: Arc<hyper::Client<C>>,

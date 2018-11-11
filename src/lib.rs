@@ -1,10 +1,10 @@
-#![feature(proc_macro_hygiene, generators)]
+#![feature(async_await, await_macro, proc_macro_hygiene, generators)]
 
 extern crate acme_client;
 extern crate base64;
 extern crate byteorder;
 extern crate chrono;
-extern crate futures_await as futures;
+extern crate futures;
 extern crate hex;
 extern crate hyper;
 extern crate openssl;

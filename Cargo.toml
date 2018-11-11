@@ -2,10 +2,10 @@
 name = "ct-tools"
 version = "0.1.0"
 authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
+edition = "2018"
 
 [dependencies]
 futures = "*"
-futures-await = "*"
 tokio = "*"
 tokio-core = "*"
 tokio-io = "*"

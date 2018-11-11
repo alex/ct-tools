@@ -1,7 +1,6 @@
 use super::common::sha256_hex;
 use super::ct::AddChainRequest;
 use base64;
-use futures::prelude::await;
 use futures::prelude::*;
 use hyper;
 use serde_json;
@@ -24,7 +23,7 @@ pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
         .unwrap();
     // TODO: undo this once lifetime bugs are fixed
     let r = http_client.request(request);
-    async_block! {
+    async {
         let response = match await!(r) {
             Ok(response) => response,
             // TODO: maybe be more selective in error handling
@@ -58,7 +57,7 @@ pub fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
         .body(hyper::Body::empty())
         .unwrap();
     let r = http_client.request(request);
-    async_block! {
+    async {
         let response = await!(r).unwrap();
         Ok(response.status() == hyper::StatusCode::OK)
     }

@@ -1,6 +1,5 @@
 use super::common::Log;
 
-use futures::prelude::await;
 use futures::prelude::*;
 
 use hyper;
@@ -45,7 +44,7 @@ fn fetch_log_list<'a, C: hyper::client::connect::Connect + 'static>(
     http_client: &'a hyper::Client<C>,
     uri: hyper::Uri,
 ) -> impl Future<Item = Vec<Log>, Error = ()> + 'a {
-    async_block! {
+    async {
         let request = hyper::Request::builder()
             .method("GET")
             .uri(uri)
