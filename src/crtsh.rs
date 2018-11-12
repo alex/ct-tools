@@ -4,6 +4,7 @@ use base64;
 use futures::compat::Future01CompatExt;
 use futures::prelude::*;
 use hyper;
+use hyper::rt::Stream;
 use serde_json;
 use url;
 
