@@ -1,8 +1,10 @@
 use super::common::Log;
 
+use futures::compat::Future01CompatExt;
 use futures::prelude::*;
 
 use hyper;
+use hyper::rt::Stream;
 use serde_json;
 
 const TRUSTED_LOG_LIST_URL: &str = "https://www.gstatic.com/ct/log_list/log_list.json";
@@ -43,16 +45,16 @@ pub fn fetch_all_ct_logs<'a, C: hyper::client::connect::Connect + 'static>(
 fn fetch_log_list<'a, C: hyper::client::connect::Connect + 'static>(
     http_client: &'a hyper::Client<C>,
     uri: hyper::Uri,
-) -> impl Future<Item = Vec<Log>, Error = ()> + 'a {
+) -> impl Future<Output = Result<Vec<Log>, ()>> + 'a {
     async {
         let request = hyper::Request::builder()
             .method("GET")
             .uri(uri)
             .body(hyper::Body::empty())
             .unwrap();
-        let response = await!(http_client.request(request)).unwrap();
+        let response = await!(http_client.request(request).compat()).unwrap();
         // Limit the response to 10MB at most, to be resillient to DoS.
-        let body = await!(response.into_body().take(10 * 1024 * 1024).concat2()).unwrap();
+        let body = await!(response.into_body().take(10 * 1024 * 1024).concat2().compat()).unwrap();
         let logs_response: LogsResponse = serde_json::from_slice(&body).unwrap();
 
         let google_id = logs_response

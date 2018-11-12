@@ -4,8 +4,10 @@ use base64;
 use byteorder::{BigEndian, WriteBytesExt};
 
 use futures;
+use futures::compat::Future01CompatExt;
 use futures::prelude::*;
 use hyper;
+use hyper::rt::Stream;
 use serde_json;
 use std::io::Write;
 use std::time::Duration;
@@ -46,7 +48,7 @@ fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     log: &Log,
     payload: Vec<u8>,
-) -> impl Future<Item = SignedCertificateTimestamp, Error = ()> {
+) -> impl Future<Output = Result<SignedCertificateTimestamp, ()>> {
     let mut url = "https://".to_string() + &log.url;
     if !url.ends_with('/') {
         url += "/";
@@ -61,7 +63,7 @@ fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
         .unwrap();
     let r = http_client.request(request);
     async {
-        let response = match await!(r) {
+        let response = match await!(r.compat()) {
             Ok(r) => r,
             // TODO: maybe not all of these should be silently ignored.
             Err(_) => return Err(()),
@@ -76,7 +78,7 @@ fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
 
         // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS
         // in the face of a dumb or malicious log.
-        let body = await!(response.into_body().take(10 * 1024 * 1024).concat2())
+        let body = await!(response.into_body().take(10 * 1024 * 1024).concat2().compat())
             .unwrap();
         Ok(serde_json::from_slice(&body).unwrap())
     }
@@ -92,7 +94,7 @@ pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
     logs: &[Log],
     cert: &[Vec<u8>],
     timeout: Duration,
-) -> impl Future<Item = Vec<(usize, SignedCertificateTimestamp)>, Error = ()> {
+) -> impl Future<Output = Result<Vec<(usize, SignedCertificateTimestamp)>, ()>> {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
     })

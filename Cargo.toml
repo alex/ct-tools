@@ -5,7 +5,7 @@ authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-futures = "*"
+futures-preview = { version = ">=0.3.0-alpha", features = ["tokio-compat"] }
 tokio = "*"
 tokio-core = "*"
 tokio-io = "*"

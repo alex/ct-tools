@@ -1,6 +1,7 @@
 use super::common::sha256_hex;
 use super::ct::AddChainRequest;
 use base64;
+use futures::compat::Future01CompatExt;
 use futures::prelude::*;
 use hyper;
 use serde_json;
@@ -9,7 +10,7 @@ use url;
 pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     cert: &[u8],
-) -> impl Future<Item = Vec<Vec<u8>>, Error = ()> {
+) -> impl Future<Output = Result<Vec<Vec<u8>>, ()>> {
     let body = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("b64cert", &base64::encode(&cert))
         .append_pair("onlyonechain", "Y")
@@ -24,7 +25,7 @@ pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
     // TODO: undo this once lifetime bugs are fixed
     let r = http_client.request(request);
     async {
-        let response = match await!(r) {
+        let response = match await!(r.compat()) {
             Ok(response) => response,
             // TODO: maybe be more selective in error handling
             Err(_) => return Err(()),
@@ -34,7 +35,7 @@ pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
             return Err(());
         }
 
-        let body = await!(response.into_body().concat2()).unwrap();
+        let body = await!(response.into_body().concat2().compat()).unwrap();
         let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
         Ok(
             add_chain_request
@@ -49,7 +50,7 @@ pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
 pub fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     cert: &[u8],
-) -> impl Future<Item = bool, Error = ()> {
+) -> impl Future<Output = Result<bool, ()>> {
     let request = hyper::Request::builder()
         .method("GET")
         .uri(format!("https://crt.sh/?d={}", sha256_hex(cert)))
@@ -58,7 +59,7 @@ pub fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
         .unwrap();
     let r = http_client.request(request);
     async {
-        let response = await!(r).unwrap();
+        let response = await!(r.compat()).unwrap();
         Ok(response.status() == hyper::StatusCode::OK)
     }
 }
