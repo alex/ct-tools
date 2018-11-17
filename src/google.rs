@@ -54,7 +54,12 @@ fn fetch_log_list<'a, C: hyper::client::connect::Connect + 'static>(
             .unwrap();
         let response = await!(http_client.request(request).compat()).unwrap();
         // Limit the response to 10MB at most, to be resillient to DoS.
-        let body = await!(response.into_body().take(10 * 1024 * 1024).concat2().compat()).unwrap();
+        let body = await!(response
+            .into_body()
+            .take(10 * 1024 * 1024)
+            .concat2()
+            .compat())
+        .unwrap();
         let logs_response: LogsResponse = serde_json::from_slice(&body).unwrap();
 
         let google_id = logs_response
@@ -64,19 +69,15 @@ fn fetch_log_list<'a, C: hyper::client::connect::Connect + 'static>(
             .map(|o| o.id)
             .unwrap();
 
-        Ok(
-            logs_response
-                .logs
-                .into_iter()
-                .filter(|log| log.disqualified_at.is_none())
-                .map(move |log| {
-                    Log {
-                        url: log.url,
-                        description: log.description,
-                        is_google: log.operated_by.contains(&google_id),
-                    }
-                })
-                .collect(),
-        )
+        Ok(logs_response
+            .logs
+            .into_iter()
+            .filter(|log| log.disqualified_at.is_none())
+            .map(move |log| Log {
+                url: log.url,
+                description: log.description,
+                is_google: log.operated_by.contains(&google_id),
+            })
+            .collect())
     }
 }

@@ -78,8 +78,12 @@ fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
 
         // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS
         // in the face of a dumb or malicious log.
-        let body = await!(response.into_body().take(10 * 1024 * 1024).concat2().compat())
-            .unwrap();
+        let body = await!(response
+            .into_body()
+            .take(10 * 1024 * 1024)
+            .concat2()
+            .compat())
+        .unwrap();
         Ok(serde_json::from_slice(&body).unwrap())
     }
 }

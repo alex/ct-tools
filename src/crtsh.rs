@@ -38,13 +38,11 @@ pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
 
         let body = await!(response.into_body().concat2().compat()).unwrap();
         let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
-        Ok(
-            add_chain_request
-                .chain
-                .iter()
-                .map(|c| base64::decode(c).unwrap())
-                .collect(),
-        )
+        Ok(add_chain_request
+            .chain
+            .iter()
+            .map(|c| base64::decode(c).unwrap())
+            .collect())
     }
 }
 
