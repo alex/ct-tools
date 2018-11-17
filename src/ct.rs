@@ -4,8 +4,7 @@ use base64;
 use byteorder::{BigEndian, WriteBytesExt};
 
 use futures;
-use futures::prelude::await;
-use futures::prelude::*;
+use futures::prelude::{async_block, await, Future, Stream};
 use hyper;
 use serde_json;
 use std::io::Write;

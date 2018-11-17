@@ -1,7 +1,6 @@
 use super::common::Log;
 
-use futures::prelude::await;
-use futures::prelude::*;
+use futures::prelude::{async_block, await, Future, Stream};
 
 use hyper;
 use serde_json;
