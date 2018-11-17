@@ -1,7 +1,7 @@
 use super::common::Log;
 
 use futures::compat::Future01CompatExt;
-use futures::prelude::*;
+use futures::prelude::Future;
 
 use hyper;
 use hyper::rt::Stream;

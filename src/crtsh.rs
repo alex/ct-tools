@@ -2,7 +2,7 @@ use super::common::sha256_hex;
 use super::ct::AddChainRequest;
 use base64;
 use futures::compat::Future01CompatExt;
-use futures::prelude::*;
+use futures::prelude::Future;
 use hyper;
 use hyper::rt::Stream;
 use serde_json;

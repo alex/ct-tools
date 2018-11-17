@@ -5,7 +5,7 @@ use byteorder::{BigEndian, WriteBytesExt};
 
 use futures;
 use futures::compat::Future01CompatExt;
-use futures::prelude::*;
+use futures::prelude::Future;
 use hyper;
 use hyper::rt::Stream;
 use serde_json;
