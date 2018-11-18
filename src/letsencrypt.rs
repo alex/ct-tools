@@ -28,7 +28,7 @@ pub struct DiskCache {
 impl DiskCache {
     pub fn new(location: PathBuf) -> DiskCache {
         fs::create_dir_all(&location).unwrap();
-        DiskCache { location: location }
+        DiskCache { location }
     }
 
     fn chain_path(&self, identifier: &str) -> PathBuf {
@@ -92,11 +92,11 @@ where
             pems.map(|(chain_pem, private_key_pem)| pems_to_rustls(&chain_pem, &private_key_pem)),
         );
         AutomaticCertResolver {
-            domains: domains,
+            domains,
             cert_cache: cache,
             acme_url: acme_url.to_string(),
             acme_account: acme_directory.account_registration().register().unwrap(),
-            active_cert: active_cert,
+            active_cert,
             sni_challenges: Mutex::new(HashMap::new()),
         }
     }

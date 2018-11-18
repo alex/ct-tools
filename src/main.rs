@@ -54,7 +54,7 @@ fn new_http_client(
 
 fn compute_paths(paths: &[String]) -> Vec<String> {
     paths
-        .into_iter()
+        .iter()
         .flat_map(|p| {
             if fs::metadata(p).unwrap().is_dir() {
                 fs::read_dir(p)
@@ -198,7 +198,7 @@ fn handle_request<C: hyper::client::connect::Connect + 'static>(
     let mut crtsh_url = None;
     let mut rendered_cert = None;
     if let Some(peer_chain) = client_certs {
-        if request.method() == &hyper::Method::POST {
+        if request.method() == hyper::Method::POST {
             if let Ok(chain) = await!(crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)) {
                 let timeout = Duration::from_secs(5);
                 let scts =
