@@ -398,27 +398,19 @@ where
     listener.reuse_address(true).unwrap();
     listener.bind(addr).unwrap();
     let tls_acceptor = tokio_rustls::TlsAcceptor::from(tls_config);
-    let work = tokio_core::net::TcpListener::from_listener(
+    let connections = tokio_core::net::TcpListener::from_listener(
         listener.listen(1024).unwrap(),
         &addr,
         &core.handle(),
     )
     .unwrap()
     .incoming()
-    .for_each(move |(sock, _addr)| {
-        tls_acceptor
-            .accept(sock)
-            .map_err(|_| ())
-            .and_then(move |s| {
-                let http = hyper::server::conn::Http::new();
-                let service = new_service(s.get_ref().1);
-                let conn = http.serve_connection(s, service).map_err(|_| ());
-                hyper::rt::spawn(conn);
-                Ok(())
-            })
-            .or_else(|()| Ok(()))
-    });
-    core.run(work).unwrap();
+    .and_then(move |(sock, _addr)| tls_acceptor.accept(sock));
+    hyper::Server::builder(connections).serve(hyper::service::make_service_fn(
+        |conn: &tokio_rustls::TlsStream<tokio_core::net::TcpStream, rustls::ServerSession>| {
+            futures::future::ok(new_service(conn.get_ref().1))
+        },
+    ));
 }
 
 #[derive(StructOpt)]
