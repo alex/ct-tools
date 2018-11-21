@@ -34,7 +34,6 @@ use std::net::SocketAddr;
 use std::process::{Command, Stdio};
 use std::rc::Rc;
 use std::sync::Arc;
-use std::thread;
 use std::time::Duration;
 use structopt::StructOpt;
 use tokio_process::CommandExt;
@@ -331,65 +330,12 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         "0.0.0.0:8000"
     } else {
         "0.0.0.0:443"
-    };
+    }
+    .parse()
+    .unwrap();
 
     // If there aren't at least two threads, the Let's Encrypt integration will deadlock.
     println!("Listening on https://{} ...", addr);
-    serve_https(addr.parse().unwrap(), tls_config, 16, move |tls_session| {
-        let http_client = new_http_client();
-        HttpHandler {
-            templates: Arc::clone(&templates),
-            http_client: Arc::new(http_client),
-            logs: Arc::clone(&logs),
-
-            client_certs: tls_session.get_peer_certificates(),
-        }
-    });
-}
-
-fn serve_https<F, S>(
-    addr: SocketAddr,
-    tls_config: rustls::ServerConfig,
-    threads: usize,
-    new_service: F,
-) where
-    F: Fn(&rustls::ServerSession) -> S + Sync + Send + 'static,
-    S: hyper::service::Service<ReqBody = hyper::Body, ResBody = hyper::Body, Error = hyper::Error>
-        + Send
-        + 'static,
-    S::Future: Send,
-{
-    let tls_config = Arc::new(tls_config);
-    let new_service = Arc::new(new_service);
-    let threads = (0..threads - 1)
-        .map(|i| {
-            let new_service = Arc::clone(&new_service);
-            let tls_config = Arc::clone(&tls_config);
-            thread::Builder::new()
-                .name(format!("worker{}", i))
-                .spawn(move || {
-                    _serve(addr, tls_config, &*new_service);
-                })
-                .unwrap()
-        })
-        .collect::<Vec<_>>();
-
-    _serve(addr, Arc::clone(&tls_config), &*new_service);
-    for t in threads {
-        t.join().unwrap();
-    }
-}
-
-fn _serve<F, S>(addr: SocketAddr, tls_config: Arc<rustls::ServerConfig>, new_service: &F)
-where
-    F: Fn(&rustls::ServerSession) -> S,
-    S: hyper::service::Service<ReqBody = hyper::Body, ResBody = hyper::Body, Error = hyper::Error>
-        + Send
-        + 'static,
-    S::Future: Send,
-{
-    let mut core = tokio_core::reactor::Core::new().unwrap();
-
     let listener = match addr {
         SocketAddr::V4(_) => net2::TcpBuilder::new_v4().unwrap(),
         SocketAddr::V6(_) => net2::TcpBuilder::new_v6().unwrap(),
@@ -397,28 +343,40 @@ where
     listener.reuse_port(true).unwrap();
     listener.reuse_address(true).unwrap();
     listener.bind(addr).unwrap();
-    let tls_acceptor = tokio_rustls::TlsAcceptor::from(tls_config);
-    let work = tokio_core::net::TcpListener::from_listener(
+    let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(tls_config));
+    let connections = tokio_core::net::TcpListener::from_listener(
         listener.listen(1024).unwrap(),
         &addr,
         &core.handle(),
     )
     .unwrap()
     .incoming()
-    .for_each(move |(sock, _addr)| {
-        tls_acceptor
-            .accept(sock)
-            .map_err(|_| ())
-            .and_then(move |s| {
-                let http = hyper::server::conn::Http::new();
-                let service = new_service(s.get_ref().1);
-                let conn = http.serve_connection(s, service).map_err(|_| ());
-                hyper::rt::spawn(conn);
-                Ok(())
-            })
-            .or_else(|()| Ok(()))
-    });
-    core.run(work).unwrap();
+    .and_then(move |(sock, _addr)| tls_acceptor.accept(sock))
+    .then(|r| match r {
+        Ok(c) => Ok::<_, std::io::Error>(Some(c)),
+        Err(_) => Ok(None),
+    })
+    .filter_map(|r| r);
+    let server = hyper::Server::builder(connections)
+        .serve(hyper::service::make_service_fn(
+            move |conn: &tokio_rustls::TlsStream<
+                tokio_core::net::TcpStream,
+                rustls::ServerSession,
+            >| {
+                let http_client = new_http_client();
+                futures::future::ok::<_, Box<dyn std::error::Error + Send + Sync + 'static>>(
+                    HttpHandler {
+                        templates: Arc::clone(&templates),
+                        http_client: Arc::new(http_client),
+                        logs: Arc::clone(&logs),
+
+                        client_certs: conn.get_ref().1.get_peer_certificates(),
+                    },
+                )
+            },
+        ))
+        .map_err(|_| ());
+    hyper::rt::run(server);
 }
 
 #[derive(StructOpt)]
