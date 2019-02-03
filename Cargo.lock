@@ -338,7 +338,7 @@ dependencies = [
  "openssl 0.10.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "pem 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "prettytable-rs 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ring 0.14.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.14.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustls 0.15.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.86 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.86 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1211,7 +1211,7 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.14.4"
+version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cc 1.0.28 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1241,7 +1241,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "ring 0.14.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.14.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "sct 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "webpki 0.19.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1286,7 +1286,7 @@ name = "sct"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "ring 0.14.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.14.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1968,7 +1968,7 @@ name = "webpki"
 version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "ring 0.14.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.14.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2156,7 +2156,7 @@ dependencies = [
 "checksum regex-syntax 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)" = "8c2f35eedad5295fdf00a63d7d4b238135723f92b434ec06774dad15c7ab0861"
 "checksum remove_dir_all 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3488ba1b9a2084d38645c4c08276a1752dcbf2c7130d74f1569681ad5d2799c5"
 "checksum reqwest 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1d56dbe269dbe19d716b76ec8c3efce8ef84e974f5b7e5527463e8c0507d4e17"
-"checksum ring 0.14.4 (registry+https://github.com/rust-lang/crates.io-index)" = "a47f25c9d9eb3279cbf39913d58e1260ab4adc4b0841da3f6d72cd5cc31feb34"
+"checksum ring 0.14.5 (registry+https://github.com/rust-lang/crates.io-index)" = "148fc853f6d85f53f5f315d46701eaacc565cdfb3cb1959730c96e81e7e49999"
 "checksum rustc-demangle 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)" = "adacaae16d02b6ec37fdc7acfcddf365978de76d1983d3ee22afc260e1ca9619"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 "checksum rustls 0.15.1 (registry+https://github.com/rust-lang/crates.io-index)" = "38af00e78b66109e7184a0ee16940f41583161b7ec0518af258e4bcaed15db25"
