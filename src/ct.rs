@@ -4,9 +4,9 @@ use base64;
 use byteorder::{BigEndian, WriteBytesExt};
 
 use futures;
-use futures::FutureExt;
 use futures::compat::Future01CompatExt;
 use futures::prelude::Future;
+use futures::FutureExt;
 use hyper;
 use hyper::rt::Stream;
 use serde_json;
@@ -99,7 +99,7 @@ pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
     logs: &[Log],
     cert: &[Vec<u8>],
     timeout: Duration,
-) -> impl Future<Output = Result<Vec<(usize, SignedCertificateTimestamp)>, ()>> {
+) -> impl Future<Output = Vec<(usize, SignedCertificateTimestamp)>> {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
     })
@@ -113,8 +113,8 @@ pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
             let s = submit_to_log(http_client, log, payload).timeout(timeout);
             async {
                 match await!(s) {
-                    Ok(sct) => Ok(Some((idx, sct))),
-                    _ => Ok(None),
+                    Ok(sct) => Some((idx, sct)),
+                    _ => None,
                 }
             }
         })
