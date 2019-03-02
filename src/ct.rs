@@ -4,6 +4,7 @@ use base64;
 use byteorder::{BigEndian, WriteBytesExt};
 
 use futures;
+use futures::FutureExt;
 use futures::compat::Future01CompatExt;
 use futures::prelude::Future;
 use hyper;
@@ -11,7 +12,7 @@ use hyper::rt::Stream;
 use serde_json;
 use std::io::Write;
 use std::time::Duration;
-use tokio::prelude::FutureExt;
+use tokio::prelude::FutureExt as _;
 
 #[derive(Debug, Deserialize)]
 pub struct SignedCertificateTimestamp {
