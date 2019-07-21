@@ -52,14 +52,15 @@ fn fetch_log_list<'a, C: hyper::client::connect::Connect + 'static>(
             .uri(uri)
             .body(hyper::Body::empty())
             .unwrap();
-        let response = await!(http_client.request(request).compat()).unwrap();
+        let response = http_client.request(request).compat().await.unwrap();
         // Limit the response to 10MB at most, to be resillient to DoS.
-        let body = await!(response
+        let body = response
             .into_body()
             .take(10 * 1024 * 1024)
             .concat2()
-            .compat())
-        .unwrap();
+            .compat()
+            .await
+            .unwrap();
         let logs_response: LogsResponse = serde_json::from_slice(&body).unwrap();
 
         let google_id = logs_response

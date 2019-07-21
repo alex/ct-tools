@@ -64,7 +64,7 @@ fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
         .unwrap();
     let r = http_client.request(request);
     async {
-        let response = match await!(r.compat()) {
+        let response = match r.compat().await {
             Ok(r) => r,
             // TODO: maybe not all of these should be silently ignored.
             Err(_) => return Err(()),
@@ -79,12 +79,13 @@ fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
 
         // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS
         // in the face of a dumb or malicious log.
-        let body = await!(response
+        let body = response
             .into_body()
             .take(10 * 1024 * 1024)
             .concat2()
-            .compat())
-        .unwrap();
+            .compat()
+            .await
+            .unwrap();
         Ok(serde_json::from_slice(&body).unwrap())
     }
 }
@@ -112,7 +113,7 @@ pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
             let payload = payload.clone();
             let s = submit_to_log(http_client, log, payload).timeout(timeout);
             async {
-                match await!(s) {
+                match s.await {
                     Ok(sct) => Some((idx, sct)),
                     _ => None,
                 }

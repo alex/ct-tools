@@ -1,4 +1,4 @@
-#![feature(async_await, await_macro, futures_api, generators, proc_macro_hygiene)]
+#![feature(async_await, futures_api, generators, proc_macro_hygiene)]
 
 extern crate dirs;
 extern crate futures;
@@ -100,7 +100,7 @@ fn submit(paths: &[String], all_logs: bool) {
                         "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
                         &path
                     );
-                    let new_chain = await!(crtsh::build_chain_for_cert(&http_client, &chain[0]));
+                    let new_chain = crtsh::build_chain_for_cert(&http_client, &chain[0]).await;
                     chain = match new_chain {
                         Ok(c) => c,
                         Err(()) => {
@@ -111,9 +111,9 @@ fn submit(paths: &[String], all_logs: bool) {
                 }
                 println!("[{}] Submitting ...", &path);
                 let timeout = Duration::from_secs(30);
-                let scts = await!(
-                    submit_cert_to_logs(&http_client, &logs, &chain, timeout)
-                ).unwrap();
+                let scts =
+                    submit_cert_to_logs(&http_client, &logs, &chain, timeout).await
+                .unwrap();
 
                 if !scts.is_empty() {
                     println!(
@@ -164,7 +164,7 @@ fn check(paths: &[String]) {
                 Box::new(crtsh::is_cert_logged(&http_client, &chain[0]))
             };
             async {
-                if await!(is_logged).unwrap() {
+                if is_logged.await.unwrap() {
                     println!("{} was already logged", path);
                 } else {
                     println!("{} has not been logged", path);
@@ -197,10 +197,11 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
     let mut rendered_cert = None;
     if let Some(peer_chain) = client_certs {
         if request.method() == hyper::Method::POST {
-            if let Ok(chain) = await!(crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)) {
+            if let Ok(chain) = crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0).await {
                 let timeout = Duration::from_secs(5);
-                let scts =
-                    await!(submit_cert_to_logs(&http_client, &logs, &chain, timeout)).unwrap();
+                let scts = submit_cert_to_logs(&http_client, &logs, &chain, timeout)
+                    .await
+                    .unwrap();
                 if !scts.is_empty() {
                     crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
                     println!("Successfully submitted: {}", sha256_hex(&chain[0]));
@@ -220,12 +221,10 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
             .spawn_async()
             .unwrap();
         let cert_bytes = peer_chain[0].0.clone();
-        await!(tokio_io::io::write_all(
-            process.stdin().take().unwrap(),
-            cert_bytes,
-        ))
-        .unwrap();
-        let out = await!(process.wait_with_output()).unwrap();
+        tokio_io::io::write_all(process.stdin().take().unwrap(), cert_bytes)
+            .await
+            .unwrap();
+        let out = process.wait_with_output().await.unwrap();
         rendered_cert = Some(String::from_utf8_lossy(&out.stdout).into_owned());
     }
 

@@ -26,7 +26,7 @@ pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
     // TODO: undo this once lifetime bugs are fixed
     let r = http_client.request(request);
     async {
-        let response = match await!(r.compat()) {
+        let response = match r.compat().await {
             Ok(response) => response,
             // TODO: maybe be more selective in error handling
             Err(_) => return Err(()),
@@ -36,7 +36,7 @@ pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
             return Err(());
         }
 
-        let body = await!(response.into_body().concat2().compat()).unwrap();
+        let body = response.into_body().concat2().compat().await.unwrap();
         let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
         Ok(add_chain_request
             .chain
@@ -58,7 +58,7 @@ pub fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
         .unwrap();
     let r = http_client.request(request);
     async {
-        let response = await!(r.compat()).unwrap();
+        let response = r.compat().await.unwrap();
         Ok(response.status() == hyper::StatusCode::OK)
     }
 }
