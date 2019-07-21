@@ -93,12 +93,12 @@ pub struct AddChainRequest {
     pub chain: Vec<String>,
 }
 
-pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
-    http_client: &hyper::Client<C>,
-    logs: &[Log],
+pub fn submit_cert_to_logs<'a, C: hyper::client::connect::Connect + 'static>(
+    http_client: &'a hyper::Client<C>,
+    logs: &'a [Log],
     cert: &[Vec<u8>],
     timeout: Duration,
-) -> impl Future<Output = Vec<(usize, SignedCertificateTimestamp)>> {
+) -> impl Future<Output = Vec<(usize, SignedCertificateTimestamp)>> + 'a {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
     })

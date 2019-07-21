@@ -1,7 +1,6 @@
 use super::common::Log;
 
 use futures::compat::Future01CompatExt;
-use futures::prelude::Future;
 
 use hyper;
 use hyper::rt::Stream;
@@ -30,55 +29,53 @@ struct LogsResponse {
     operators: Vec<LogsResponseOperators>,
 }
 
-pub fn fetch_trusted_ct_logs<'a, C: hyper::client::connect::Connect + 'static>(
+async fn fetch_trusted_ct_logs<'a, C: hyper::client::connect::Connect + 'static>(
     http_client: &'a hyper::Client<C>,
-) -> impl Future<Item = Vec<Log>, Error = ()> + 'a {
-    fetch_log_list(http_client, TRUSTED_LOG_LIST_URL.parse().unwrap())
+) -> Vec<Log> {
+    fetch_log_list(http_client, TRUSTED_LOG_LIST_URL.parse().unwrap()).await
 }
 
-pub fn fetch_all_ct_logs<'a, C: hyper::client::connect::Connect + 'static>(
+pub async fn fetch_all_ct_logs<'a, C: hyper::client::connect::Connect + 'static>(
     http_client: &'a hyper::Client<C>,
-) -> impl Future<Item = Vec<Log>, Error = ()> + 'a {
-    fetch_log_list(http_client, ALL_LOG_LIST_URL.parse().unwrap())
+) -> Vec<Log> {
+    fetch_log_list(http_client, ALL_LOG_LIST_URL.parse().unwrap()).await
 }
 
-fn fetch_log_list<'a, C: hyper::client::connect::Connect + 'static>(
+async fn fetch_log_list<'a, C: hyper::client::connect::Connect + 'static>(
     http_client: &'a hyper::Client<C>,
     uri: hyper::Uri,
-) -> impl Future<Output = Result<Vec<Log>, ()>> + 'a {
-    async {
-        let request = hyper::Request::builder()
-            .method("GET")
-            .uri(uri)
-            .body(hyper::Body::empty())
-            .unwrap();
-        let response = http_client.request(request).compat().await.unwrap();
-        // Limit the response to 10MB at most, to be resillient to DoS.
-        let body = response
-            .into_body()
-            .take(10 * 1024 * 1024)
-            .concat2()
-            .compat()
-            .await
-            .unwrap();
-        let logs_response: LogsResponse = serde_json::from_slice(&body).unwrap();
+) -> Vec<Log> {
+    let request = hyper::Request::builder()
+        .method("GET")
+        .uri(uri)
+        .body(hyper::Body::empty())
+        .unwrap();
+    let response = http_client.request(request).compat().await.unwrap();
+    // Limit the response to 10MB at most, to be resillient to DoS.
+    let body = response
+        .into_body()
+        .take(10 * 1024 * 1024)
+        .concat2()
+        .compat()
+        .await
+        .unwrap();
+    let logs_response: LogsResponse = serde_json::from_slice(&body).unwrap();
 
-        let google_id = logs_response
-            .operators
-            .iter()
-            .find(|o| o.name == "Google")
-            .map(|o| o.id)
-            .unwrap();
+    let google_id = logs_response
+        .operators
+        .iter()
+        .find(|o| o.name == "Google")
+        .map(|o| o.id)
+        .unwrap();
 
-        Ok(logs_response
-            .logs
-            .into_iter()
-            .filter(|log| log.disqualified_at.is_none())
-            .map(move |log| Log {
-                url: log.url,
-                description: log.description,
-                is_google: log.operated_by.contains(&google_id),
-            })
-            .collect())
-    }
+    logs_response
+        .logs
+        .into_iter()
+        .filter(|log| log.disqualified_at.is_none())
+        .map(move |log| Log {
+            url: log.url,
+            description: log.description,
+            is_google: log.operated_by.contains(&google_id),
+        })
+        .collect()
 }
