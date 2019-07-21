@@ -112,7 +112,7 @@ pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
             let s = submit_to_log(http_client, log, payload).timeout(timeout);
             async {
                 match s.await {
-                    Ok(sct) => Some((idx, sct)),
+                    Ok(Ok(sct)) => Some((idx, sct)),
                     _ => None,
                 }
             }

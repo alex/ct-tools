@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 futures-preview = { version = ">=0.3.0-alpha", features = ["compat"] }
-tokio = "*"
+tokio = { version = "0.2", git = "https://github.com/tokio-rs/tokio" }
 tokio-core = "*"
 tokio-io = "*"
 tokio-process = "*"
