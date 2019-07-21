@@ -68,7 +68,7 @@ fn compute_paths(paths: &[String]) -> Vec<String> {
 }
 
 fn submit(paths: &[String], all_logs: bool) {
-    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+    let mut rt = tokio::runtime::Runtime::new().unwrap();
     let http_client = Rc::new(new_http_client());
 
     let logs = Rc::new(if all_logs {
@@ -142,7 +142,7 @@ fn submit(paths: &[String], all_logs: bool) {
 }
 
 fn check(paths: &[String]) {
-    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+    let mut rt = tokio::runtime::Runtime::new().unwrap();
     let http_client = new_http_client();
 
     let all_paths = compute_paths(paths);
@@ -315,7 +315,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
 
-    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
+    let mut rt = tokio::runtime::Runtime::new().unwrap();
     let http_client = new_http_client();
     let logs = Arc::new(rt.block_on(fetch_trusted_ct_logs(&http_client)).unwrap());
     let templates = Arc::new(compile_templates!("templates/*"));
