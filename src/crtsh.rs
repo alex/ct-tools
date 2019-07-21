@@ -2,10 +2,10 @@ use super::common::sha256_hex;
 use super::ct::AddChainRequest;
 use base64;
 use futures::compat::Future01CompatExt;
-use futures::prelude::Future;
 use hyper;
 use hyper::rt::Stream;
 use serde_json;
+use std::future::Future;
 use url;
 
 pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(

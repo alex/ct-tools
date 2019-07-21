@@ -1,7 +1,6 @@
 #![feature(async_await, futures_api, generators, proc_macro_hygiene)]
 
 extern crate dirs;
-extern crate futures;
 extern crate hyper;
 extern crate hyper_rustls;
 extern crate net2;
@@ -25,10 +24,10 @@ use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
-use futures::Future;
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::fs::{self, File};
+use std::future::Future;
 use std::io::Read;
 use std::net::SocketAddr;
 use std::process::{Command, Stdio};
@@ -79,7 +78,7 @@ fn submit(paths: &[String], all_logs: bool) {
 
     let all_paths = compute_paths(paths);
 
-    let work: Box<Future<Output = ()>> = Box::new(
+    let work: Box<dyn Future<Output = ()>> = Box::new(
         futures::stream::futures_ordered(all_paths.iter().map(|path| {
             let path = path.to_string();
 
@@ -147,7 +146,7 @@ fn check(paths: &[String]) {
 
     let all_paths = compute_paths(paths);
 
-    let work: Box<futures::Future<Output = ()>> = Box::new(
+    let work: Box<dyn Future<Output = ()>> = Box::new(
         futures::stream::futures_ordered(all_paths.iter().map(|path| {
             let path = path.to_string();
             let mut contents = Vec::new();
@@ -238,7 +237,7 @@ impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service for H
     type ReqBody = hyper::Body;
     type ResBody = hyper::Body;
     type Error = hyper::Error;
-    type Future = Box<Future<Output = Result<hyper::Response<Self::ResBody>, Self::Error> + Send>>;
+    type Future = Box<dyn Future<Output = Result<hyper::Response<Self::ResBody>, Self::Error>>>;
 
     fn call(&mut self, request: hyper::Request<hyper::Body>) -> Self::Future {
         Box::new(handle_request(
