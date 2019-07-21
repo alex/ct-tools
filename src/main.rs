@@ -68,13 +68,13 @@ fn compute_paths(paths: &[String]) -> Vec<String> {
 }
 
 fn submit(paths: &[String], all_logs: bool) {
-    let mut core = tokio_core::reactor::Core::new().unwrap();
+    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
     let http_client = Rc::new(new_http_client());
 
     let logs = Rc::new(if all_logs {
-        core.run(fetch_all_ct_logs(&http_client)).unwrap()
+        rt.block_on(fetch_all_ct_logs(&http_client))
     } else {
-        core.run(fetch_trusted_ct_logs(&http_client)).unwrap()
+        rt.block_on(fetch_trusted_ct_logs(&http_client))
     });
 
     let all_paths = compute_paths(paths);
@@ -138,11 +138,11 @@ fn submit(paths: &[String], all_logs: bool) {
         })).buffered(4)
             .for_each(|()| futures::future::ok(())),
     );
-    core.run(work).unwrap();
+    rt.block_on(work);
 }
 
 fn check(paths: &[String]) {
-    let mut core = tokio_core::reactor::Core::new().unwrap();
+    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
     let http_client = new_http_client();
 
     let all_paths = compute_paths(paths);
@@ -173,7 +173,7 @@ fn check(paths: &[String]) {
         .buffered(16)
         .for_each(|()| futures::future::ok(())),
     );
-    core.run(work).unwrap();
+    rt.block_on(work);
 }
 
 struct HttpHandler<C: hyper::client::connect::Connect> {
@@ -315,9 +315,9 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
 
-    let mut core = tokio_core::reactor::Core::new().unwrap();
+    let mut rt = tokio::runtime::current_thread::Runtime::new().unwrap();
     let http_client = new_http_client();
-    let logs = Arc::new(core.run(fetch_trusted_ct_logs(&http_client)).unwrap());
+    let logs = Arc::new(rt.block_on(fetch_trusted_ct_logs(&http_client)).unwrap());
     let templates = Arc::new(compile_templates!("templates/*"));
 
     let addr = if local_dev {
@@ -341,7 +341,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     let connections = tokio_core::net::TcpListener::from_listener(
         listener.listen(1024).unwrap(),
         &addr,
-        &core.handle(),
+        &rt.handle(),
     )
     .unwrap()
     .incoming()

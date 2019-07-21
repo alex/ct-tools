@@ -9,7 +9,7 @@ futures-preview = { version = ">=0.3.0-alpha", features = ["compat"] }
 tokio = { version = "0.2", git = "https://github.com/tokio-rs/tokio" }
 tokio-core = "*"
 tokio-io = "*"
-tokio-process = "*"
+tokio-process = { version = "0.2", git = "https://github.com/tokio-rs/tokio" }
 tokio-rustls = "*"
 tokio-service = "*"
 net2 = "*"
