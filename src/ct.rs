@@ -106,14 +106,12 @@ pub async fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
     let futures = logs
         .iter()
         .enumerate()
-        .map(move |(idx, log)| {
-            let payload = payload.clone();
+        .map(|(idx, log)| (idx, log, payload.clone()))
+        .map(async move |(idx, log, payload)| {
             let s = submit_to_log(http_client, log, payload).timeout(timeout);
-            async {
-                match s.await {
-                    Ok(Ok(sct)) => Some((idx, sct)),
-                    _ => None,
-                }
+            match s.await {
+                Ok(Ok(sct)) => Some((idx, sct)),
+                _ => None,
             }
         })
         .collect::<Vec<_>>();
