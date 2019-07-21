@@ -1,4 +1,4 @@
-#![feature(async_await, futures_api, proc_macro_hygiene, generators)]
+#![feature(async_await)]
 
 extern crate acme_client;
 extern crate base64;
