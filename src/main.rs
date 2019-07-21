@@ -79,7 +79,7 @@ fn submit(paths: &[String], all_logs: bool) {
 
     let all_paths = compute_paths(paths);
 
-    let work: Box<Future<Item = (), Error = ()>> = Box::new(
+    let work: Box<Future<Output = ()>> = Box::new(
         futures::stream::futures_ordered(all_paths.iter().map(|path| {
             let path = path.to_string();
 
@@ -112,8 +112,7 @@ fn submit(paths: &[String], all_logs: bool) {
                 println!("[{}] Submitting ...", &path);
                 let timeout = Duration::from_secs(30);
                 let scts =
-                    submit_cert_to_logs(&http_client, &logs, &chain, timeout).await
-                .unwrap();
+                    submit_cert_to_logs(&http_client, &logs, &chain, timeout).await;
 
                 if !scts.is_empty() {
                     println!(
@@ -148,7 +147,7 @@ fn check(paths: &[String]) {
 
     let all_paths = compute_paths(paths);
 
-    let work: Box<futures::Future<Item = (), Error = ()>> = Box::new(
+    let work: Box<futures::Future<Output = ()>> = Box::new(
         futures::stream::futures_ordered(all_paths.iter().map(|path| {
             let path = path.to_string();
             let mut contents = Vec::new();
@@ -158,13 +157,12 @@ fn check(paths: &[String]) {
                 .unwrap();
 
             let chain = pems_to_chain(&contents);
-            let is_logged: Box<Future<Item = bool, Error = ()>> = if chain.is_empty() {
-                Box::new(futures::future::ok(false))
-            } else {
-                Box::new(crtsh::is_cert_logged(&http_client, &chain[0]))
-            };
             async {
-                if is_logged.await.unwrap() {
+                if !chain.is_empty()
+                    && crtsh::is_cert_logged(&http_client, &chain[0])
+                        .await
+                        .unwrap()
+                {
                     println!("{} was already logged", path);
                 } else {
                     println!("{} has not been logged", path);
@@ -199,9 +197,7 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
         if request.method() == hyper::Method::POST {
             if let Ok(chain) = crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0).await {
                 let timeout = Duration::from_secs(5);
-                let scts = submit_cert_to_logs(&http_client, &logs, &chain, timeout)
-                    .await
-                    .unwrap();
+                let scts = submit_cert_to_logs(&http_client, &logs, &chain, timeout).await;
                 if !scts.is_empty() {
                     crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
                     println!("Successfully submitted: {}", sha256_hex(&chain[0]));
@@ -242,7 +238,7 @@ impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service for H
     type ReqBody = hyper::Body;
     type ResBody = hyper::Body;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = hyper::Response<Self::ResBody>, Error = Self::Error> + Send>;
+    type Future = Box<Future<Output = Result<hyper::Response<Self::ResBody>, Self::Error> + Send>>;
 
     fn call(&mut self, request: hyper::Request<hyper::Body>) -> Self::Future {
         Box::new(handle_request(

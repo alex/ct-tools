@@ -29,7 +29,7 @@ struct LogsResponse {
     operators: Vec<LogsResponseOperators>,
 }
 
-async fn fetch_trusted_ct_logs<'a, C: hyper::client::connect::Connect + 'static>(
+pub async fn fetch_trusted_ct_logs<'a, C: hyper::client::connect::Connect + 'static>(
     http_client: &'a hyper::Client<C>,
 ) -> Vec<Log> {
     fetch_log_list(http_client, TRUSTED_LOG_LIST_URL.parse().unwrap()).await
