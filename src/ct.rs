@@ -5,7 +5,6 @@ use byteorder::{BigEndian, WriteBytesExt};
 
 use futures;
 use futures::compat::Future01CompatExt;
-use futures::prelude::Future;
 use futures::FutureExt;
 use hyper;
 use hyper::rt::Stream;
@@ -93,12 +92,12 @@ pub struct AddChainRequest {
     pub chain: Vec<String>,
 }
 
-pub fn submit_cert_to_logs<'a, C: hyper::client::connect::Connect + 'static>(
-    http_client: &'a hyper::Client<C>,
-    logs: &'a [Log],
+pub async fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
+    http_client: &hyper::Client<C>,
+    logs: &[Log],
     cert: &[Vec<u8>],
     timeout: Duration,
-) -> impl Future<Output = Vec<(usize, SignedCertificateTimestamp)>> + 'a {
+) -> Vec<(usize, SignedCertificateTimestamp)> {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
     })
@@ -119,5 +118,7 @@ pub fn submit_cert_to_logs<'a, C: hyper::client::connect::Connect + 'static>(
         })
         .collect::<Vec<_>>();
 
-    futures::future::join_all(futures).map(|scts| scts.into_iter().filter_map(|s| s).collect())
+    futures::future::join_all(futures)
+        .map(|scts| scts.into_iter().filter_map(|s| s).collect())
+        .await
 }
