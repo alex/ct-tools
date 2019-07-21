@@ -45,11 +45,11 @@ impl SignedCertificateTimestamp {
     }
 }
 
-fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
+async fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     log: &Log,
     payload: Vec<u8>,
-) -> impl Future<Output = Result<SignedCertificateTimestamp, ()>> {
+) -> Result<SignedCertificateTimestamp, ()> {
     let mut url = "https://".to_string() + &log.url;
     if !url.ends_with('/') {
         url += "/";
@@ -63,31 +63,29 @@ fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
         .body(payload.into())
         .unwrap();
     let r = http_client.request(request);
-    async {
-        let response = match r.compat().await {
-            Ok(r) => r,
-            // TODO: maybe not all of these should be silently ignored.
-            Err(_) => return Err(()),
-        };
+    let response = match r.compat().await {
+        Ok(r) => r,
+        // TODO: maybe not all of these should be silently ignored.
+        Err(_) => return Err(()),
+    };
 
-        // 400, 403, and probably some others generally indicate a log doesn't accept certs from
-        // this root, or that the log isn't accepting new submissions. Server errors mean there's
-        // nothing we can do.
-        if response.status().is_client_error() || response.status().is_server_error() {
-            return Err(());
-        }
-
-        // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS
-        // in the face of a dumb or malicious log.
-        let body = response
-            .into_body()
-            .take(10 * 1024 * 1024)
-            .concat2()
-            .compat()
-            .await
-            .unwrap();
-        Ok(serde_json::from_slice(&body).unwrap())
+    // 400, 403, and probably some others generally indicate a log doesn't accept certs from
+    // this root, or that the log isn't accepting new submissions. Server errors mean there's
+    // nothing we can do.
+    if response.status().is_client_error() || response.status().is_server_error() {
+        return Err(());
     }
+
+    // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS
+    // in the face of a dumb or malicious log.
+    let body = response
+        .into_body()
+        .take(10 * 1024 * 1024)
+        .concat2()
+        .compat()
+        .await
+        .unwrap();
+    Ok(serde_json::from_slice(&body).unwrap())
 }
 
 #[derive(Serialize, Deserialize)]
