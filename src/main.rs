@@ -30,7 +30,6 @@ use rustls::Session;
 use std::fs::{self, File};
 use std::future::Future;
 use std::io::Read;
-use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::process::{Command, Stdio};
 use std::rc::Rc;
@@ -80,8 +79,9 @@ async fn submit(paths: &[String], all_logs: bool) {
 
     let all_paths = compute_paths(paths);
 
-    let work =
-        futures::stream::FuturesOrdered::from_iter(all_paths.iter().map(async move |path| {
+    let work = all_paths
+        .iter()
+        .map(async move |path| {
             let path = path.to_string();
 
             let mut contents = Vec::new();
@@ -131,7 +131,8 @@ async fn submit(paths: &[String], all_logs: bool) {
             } else {
                 println!("[{}] No SCTs obtained", &path);
             }
-        }))
+        })
+        .collect::<futures::stream::FuturesOrdered<_>>()
         .buffered(4)
         .for_each(async move |()| ());
     work.await;
@@ -142,8 +143,9 @@ async fn check(paths: &[String]) {
 
     let all_paths = compute_paths(paths);
 
-    let work =
-        futures::stream::FuturesOrdered::from_iter(all_paths.iter().map(async move |path| {
+    let work = all_paths
+        .iter()
+        .map(async move |path| {
             let path = path.to_string();
             let mut contents = Vec::new();
             File::open(&path)
@@ -157,10 +159,11 @@ async fn check(paths: &[String]) {
             } else {
                 println!("{} has not been logged", path);
             }
-        }))
+        })
+        .collect::<futures::stream::FuturesOrdered<_>>()
         .buffered(16)
         .for_each(async move |()| ());
-    work.await
+    work.await;
 }
 
 struct HttpHandler<C: hyper::client::connect::Connect> {
