@@ -105,7 +105,7 @@ async fn submit(paths: &[String], all_logs: bool) {
                     Ok(c) => c,
                     Err(()) => {
                         println!("[{}] Unable to build a chain", path);
-                        return Ok(futures::future::ok(()));
+                        return;
                     }
                 }
             }
@@ -131,8 +131,6 @@ async fn submit(paths: &[String], all_logs: bool) {
             } else {
                 println!("[{}] No SCTs obtained", &path);
             }
-
-            Ok(futures::future::ok(()))
         }))
         .buffered(4)
         .for_each(async move |()| ());
