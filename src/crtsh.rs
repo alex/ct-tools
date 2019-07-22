@@ -8,10 +8,10 @@ use serde_json;
 use std::future::Future;
 use url;
 
-pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
+pub async fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     cert: &[u8],
-) -> impl Future<Output = Result<Vec<Vec<u8>>, ()>> {
+) -> Result<Vec<Vec<u8>>, ()> {
     let body = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("b64cert", &base64::encode(&cert))
         .append_pair("onlyonechain", "Y")
@@ -25,25 +25,23 @@ pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
         .unwrap();
     // TODO: undo this once lifetime bugs are fixed
     let r = http_client.request(request);
-    async {
-        let response = match r.compat().await {
-            Ok(response) => response,
-            // TODO: maybe be more selective in error handling
-            Err(_) => return Err(()),
-        };
+    let response = match r.compat().await {
+        Ok(response) => response,
+        // TODO: maybe be more selective in error handling
+        Err(_) => return Err(()),
+    };
 
-        if response.status() == hyper::StatusCode::NOT_FOUND {
-            return Err(());
-        }
-
-        let body = response.into_body().concat2().compat().await.unwrap();
-        let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
-        Ok(add_chain_request
-            .chain
-            .iter()
-            .map(|c| base64::decode(c).unwrap())
-            .collect())
+    if response.status() == hyper::StatusCode::NOT_FOUND {
+        return Err(());
     }
+
+    let body = response.into_body().concat2().compat().await.unwrap();
+    let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
+    Ok(add_chain_request
+        .chain
+        .iter()
+        .map(|c| base64::decode(c).unwrap())
+        .collect())
 }
 
 pub fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
