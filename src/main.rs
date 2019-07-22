@@ -24,6 +24,7 @@ use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
+use futures::compat::Future01CompatExt;
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::fs::{self, File};
@@ -35,6 +36,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
+use tokio::io::AsyncWriteExt;
 use tokio_process::CommandExt;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
@@ -159,7 +161,6 @@ async fn check(paths: &[String]) {
             } else {
                 println!("{} has not been logged", path);
             }
-            Ok(futures::future::ok(()))
         }))
         .buffered(16)
         .for_each(|()| futures::future::ok(())),
@@ -208,10 +209,14 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
             .spawn_async()
             .unwrap();
         let cert_bytes = peer_chain[0].0.clone();
-        tokio_io::io::write_all(process.stdin().take().unwrap(), cert_bytes)
+        process
+            .stdin()
+            .take()
+            .unwrap()
+            .write_all(cert_bytes)
             .await
             .unwrap();
-        let out = process.wait_with_output().await.unwrap();
+        let out = process.wait_with_output().compat().await.unwrap();
         rendered_cert = Some(String::from_utf8_lossy(&out.stdout).into_owned());
     }
 
