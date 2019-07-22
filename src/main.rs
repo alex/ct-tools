@@ -66,14 +66,13 @@ fn compute_paths(paths: &[String]) -> Vec<String> {
         .collect()
 }
 
-fn submit(paths: &[String], all_logs: bool) {
-    let mut rt = tokio::runtime::Runtime::new().unwrap();
+async fn submit(paths: &[String], all_logs: bool) {
     let http_client = Rc::new(new_http_client());
 
     let logs = Rc::new(if all_logs {
-        rt.block_on(fetch_all_ct_logs(&http_client))
+        fetch_all_ct_logs(&http_client).await
     } else {
-        rt.block_on(fetch_trusted_ct_logs(&http_client))
+        fetch_trusted_ct_logs(&http_client).await
     });
 
     let all_paths = compute_paths(paths);
@@ -137,11 +136,10 @@ fn submit(paths: &[String], all_logs: bool) {
         })).buffered(4)
             .for_each(|()| futures::future::ok(())),
     );
-    rt.block_on(work);
+    work.await;
 }
 
-fn check(paths: &[String]) {
-    let mut rt = tokio::runtime::Runtime::new().unwrap();
+async fn check(paths: &[String]) {
     let http_client = new_http_client();
 
     let all_paths = compute_paths(paths);
@@ -168,7 +166,7 @@ fn check(paths: &[String]) {
         .buffered(16)
         .for_each(|()| futures::future::ok(())),
     );
-    rt.block_on(work);
+    work.await
 }
 
 struct HttpHandler<C: hyper::client::connect::Connect> {
@@ -412,13 +410,14 @@ enum Opt {
     },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     match Opt::from_args() {
         Opt::Submit { paths, all_logs } => {
-            submit(&paths, all_logs);
+            submit(&paths, all_logs).await;
         }
         Opt::Check { paths } => {
-            check(&paths);
+            check(&paths).await;
         }
         Opt::Server {
             local_dev,
