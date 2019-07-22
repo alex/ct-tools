@@ -157,11 +157,7 @@ fn check(paths: &[String]) {
 
             let chain = pems_to_chain(&contents);
             async {
-                if !chain.is_empty()
-                    && crtsh::is_cert_logged(&http_client, &chain[0])
-                        .await
-                        .unwrap()
-                {
+                if !chain.is_empty() && crtsh::is_cert_logged(&http_client, &chain[0]).await {
                     println!("{} was already logged", path);
                 } else {
                     println!("{} has not been logged", path);

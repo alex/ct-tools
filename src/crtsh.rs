@@ -5,7 +5,6 @@ use futures::compat::Future01CompatExt;
 use hyper;
 use hyper::rt::Stream;
 use serde_json;
-use std::future::Future;
 use url;
 
 pub async fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
@@ -44,21 +43,18 @@ pub async fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
         .collect())
 }
 
-pub fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
+pub async fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     cert: &[u8],
-) -> impl Future<Output = Result<bool, ()>> {
+) -> bool {
     let request = hyper::Request::builder()
         .method("GET")
         .uri(format!("https://crt.sh/?d={}", sha256_hex(cert)))
         .header("Connection", "keep-alive")
         .body(hyper::Body::empty())
         .unwrap();
-    let r = http_client.request(request);
-    async {
-        let response = r.compat().await.unwrap();
-        Ok(response.status() == hyper::StatusCode::OK)
-    }
+    let response = http_client.request(request).compat().await.unwrap();
+    response.status() == hyper::StatusCode::OK
 }
 
 pub fn url_for_cert(cert: &[u8]) -> String {
