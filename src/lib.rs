@@ -1,4 +1,4 @@
-#![feature(async_await)]
+#![feature(async_await, async_closure)]
 
 extern crate acme_client;
 extern crate base64;

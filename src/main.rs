@@ -1,4 +1,4 @@
-#![feature(async_await, futures_api)]
+#![feature(async_await, async_closure, futures_api)]
 
 extern crate dirs;
 extern crate hyper;
