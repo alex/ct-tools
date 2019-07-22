@@ -105,7 +105,7 @@ async fn submit(paths: &[String], all_logs: bool) {
                     Ok(c) => c,
                     Err(()) => {
                         println!("[{}] Unable to build a chain", path);
-                        return;
+                        return futures::future::ready(());
                     }
                 }
             }
@@ -131,6 +131,8 @@ async fn submit(paths: &[String], all_logs: bool) {
             } else {
                 println!("[{}] No SCTs obtained", &path);
             }
+
+            futures::future::ready(())
         })
         .collect::<futures::stream::FuturesOrdered<_>>()
         .buffered(4)
@@ -159,6 +161,8 @@ async fn check(paths: &[String]) {
             } else {
                 println!("{} has not been logged", path);
             }
+
+            futures::future::ready(())
         })
         .collect::<futures::stream::FuturesOrdered<_>>()
         .buffered(16)
