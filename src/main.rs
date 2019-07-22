@@ -79,63 +79,61 @@ async fn submit(paths: &[String], all_logs: bool) {
 
     let all_paths = compute_paths(paths);
 
-    let work: Box<dyn Future<Output = ()>> = Box::new(
-        futures::stream::futures_ordered(all_paths.iter().map(async move |path| {
-            let path = path.to_string();
+    let work = futures::stream::futures_ordered(all_paths.iter().map(async move |path| {
+        let path = path.to_string();
 
-            let mut contents = Vec::new();
-            File::open(&path)
-                .unwrap()
-                .read_to_end(&mut contents)
-                .unwrap();
+        let mut contents = Vec::new();
+        File::open(&path)
+            .unwrap()
+            .read_to_end(&mut contents)
+            .unwrap();
 
-            let mut chain = pems_to_chain(&contents);
-            let http_client = Rc::clone(&http_client);
-            let logs = Rc::clone(&logs);
-            if chain.len() == 1 {
-                // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
-                // as a glorified AIA chaser.
-                println!(
-                    "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
-                    &path
-                );
-                let new_chain = crtsh::build_chain_for_cert(&http_client, &chain[0]).await;
-                chain = match new_chain {
-                    Ok(c) => c,
-                    Err(()) => {
-                        println!("[{}] Unable to build a chain", path);
-                        return Ok(futures::future::ok(()));
-                    }
+        let mut chain = pems_to_chain(&contents);
+        let http_client = Rc::clone(&http_client);
+        let logs = Rc::clone(&logs);
+        if chain.len() == 1 {
+            // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
+            // as a glorified AIA chaser.
+            println!(
+                "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
+                &path
+            );
+            let new_chain = crtsh::build_chain_for_cert(&http_client, &chain[0]).await;
+            chain = match new_chain {
+                Ok(c) => c,
+                Err(()) => {
+                    println!("[{}] Unable to build a chain", path);
+                    return Ok(futures::future::ok(()));
                 }
             }
-            println!("[{}] Submitting ...", &path);
-            let timeout = Duration::from_secs(30);
-            let scts = submit_cert_to_logs(&http_client, &logs, &chain, timeout).await;
+        }
+        println!("[{}] Submitting ...", &path);
+        let timeout = Duration::from_secs(30);
+        let scts = submit_cert_to_logs(&http_client, &logs, &chain, timeout).await;
 
-            if !scts.is_empty() {
-                println!(
-                    "[{}] Find the cert on crt.sh: {}",
-                    path,
-                    crtsh::url_for_cert(&chain[0])
-                );
-                let mut table = prettytable::Table::new();
-                table.add_row(row!["Log"]);
-                for (log_idx, _) in scts {
-                    let log = &logs[log_idx];
-                    table.add_row(row![log.description]);
-                }
-                table.printstd();
-                println!();
-                println!();
-            } else {
-                println!("[{}] No SCTs obtained", &path);
+        if !scts.is_empty() {
+            println!(
+                "[{}] Find the cert on crt.sh: {}",
+                path,
+                crtsh::url_for_cert(&chain[0])
+            );
+            let mut table = prettytable::Table::new();
+            table.add_row(row!["Log"]);
+            for (log_idx, _) in scts {
+                let log = &logs[log_idx];
+                table.add_row(row![log.description]);
             }
+            table.printstd();
+            println!();
+            println!();
+        } else {
+            println!("[{}] No SCTs obtained", &path);
+        }
 
-            Ok(futures::future::ok(()))
-        }))
-        .buffered(4)
-        .for_each(|()| futures::future::ok(())),
-    );
+        Ok(futures::future::ok(()))
+    }))
+    .buffered(4)
+    .for_each(|()| futures::future::ok(()));
     work.await;
 }
 
@@ -144,25 +142,23 @@ async fn check(paths: &[String]) {
 
     let all_paths = compute_paths(paths);
 
-    let work: Box<dyn Future<Output = ()>> = Box::new(
-        futures::stream::futures_ordered(all_paths.iter().map(async move |path| {
-            let path = path.to_string();
-            let mut contents = Vec::new();
-            File::open(&path)
-                .unwrap()
-                .read_to_end(&mut contents)
-                .unwrap();
+    let work = futures::stream::futures_ordered(all_paths.iter().map(async move |path| {
+        let path = path.to_string();
+        let mut contents = Vec::new();
+        File::open(&path)
+            .unwrap()
+            .read_to_end(&mut contents)
+            .unwrap();
 
-            let chain = pems_to_chain(&contents);
-            if !chain.is_empty() && crtsh::is_cert_logged(&http_client, &chain[0]).await {
-                println!("{} was already logged", path);
-            } else {
-                println!("{} has not been logged", path);
-            }
-        }))
-        .buffered(16)
-        .for_each(|()| futures::future::ok(())),
-    );
+        let chain = pems_to_chain(&contents);
+        if !chain.is_empty() && crtsh::is_cert_logged(&http_client, &chain[0]).await {
+            println!("{} was already logged", path);
+        } else {
+            println!("{} has not been logged", path);
+        }
+    }))
+    .buffered(16)
+    .for_each(|()| futures::future::ok(()));
     work.await
 }
 
