@@ -14,7 +14,6 @@ extern crate rustls;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate tokio;
-extern crate tokio_core;
 extern crate url;
 extern crate webpki;
 

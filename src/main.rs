@@ -12,7 +12,6 @@ extern crate structopt;
 extern crate structopt_derive;
 #[macro_use]
 extern crate tera;
-extern crate tokio_core;
 extern crate tokio_io;
 extern crate tokio_process;
 extern crate tokio_rustls;
@@ -24,6 +23,7 @@ use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
+use futures::stream::StreamExt;
 use futures::compat::Future01CompatExt;
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
@@ -328,7 +328,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     listener.reuse_address(true).unwrap();
     listener.bind(addr).unwrap();
     let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(tls_config));
-    let connections = tokio_core::net::TcpListener::from_listener(
+    let connections = tokio::net::TcpListener::from_listener(
         listener.listen(1024).unwrap(),
         &addr,
         &rt.handle(),
@@ -344,7 +344,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     let server = hyper::Server::builder(connections)
         .serve(hyper::service::make_service_fn(
             move |conn: &tokio_rustls::TlsStream<
-                tokio_core::net::TcpStream,
+                tokio::net::TcpStream,
                 rustls::ServerSession,
             >| {
                 let http_client = new_http_client();
