@@ -1,4 +1,4 @@
-#![feature(async_await, futures_api, generators, proc_macro_hygiene)]
+#![feature(async_await, futures_api)]
 
 extern crate dirs;
 extern crate hyper;
