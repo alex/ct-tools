@@ -29,20 +29,20 @@ struct LogsResponse {
     operators: Vec<LogsResponseOperators>,
 }
 
-pub async fn fetch_trusted_ct_logs<'a, C: hyper::client::connect::Connect + 'static>(
-    http_client: &'a hyper::Client<C>,
+pub async fn fetch_trusted_ct_logs<C: hyper::client::connect::Connect + 'static>(
+    http_client: &hyper::Client<C>,
 ) -> Vec<Log> {
     fetch_log_list(http_client, TRUSTED_LOG_LIST_URL.parse().unwrap()).await
 }
 
-pub async fn fetch_all_ct_logs<'a, C: hyper::client::connect::Connect + 'static>(
-    http_client: &'a hyper::Client<C>,
+pub async fn fetch_all_ct_logs<C: hyper::client::connect::Connect + 'static>(
+    http_client: &hyper::Client<C>,
 ) -> Vec<Log> {
     fetch_log_list(http_client, ALL_LOG_LIST_URL.parse().unwrap()).await
 }
 
-async fn fetch_log_list<'a, C: hyper::client::connect::Connect + 'static>(
-    http_client: &'a hyper::Client<C>,
+async fn fetch_log_list<C: hyper::client::connect::Connect + 'static>(
+    http_client: &hyper::Client<C>,
     uri: hyper::Uri,
 ) -> Vec<Log> {
     let request = hyper::Request::builder()
