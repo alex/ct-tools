@@ -145,7 +145,7 @@ async fn check(paths: &[String]) {
     let all_paths = compute_paths(paths);
 
     let work: Box<dyn Future<Output = ()>> = Box::new(
-        futures::stream::futures_ordered(all_paths.iter().map(|path| {
+        futures::stream::futures_ordered(all_paths.iter().map(async move |path| {
             let path = path.to_string();
             let mut contents = Vec::new();
             File::open(&path)
@@ -154,14 +154,12 @@ async fn check(paths: &[String]) {
                 .unwrap();
 
             let chain = pems_to_chain(&contents);
-            async {
-                if !chain.is_empty() && crtsh::is_cert_logged(&http_client, &chain[0]).await {
-                    println!("{} was already logged", path);
-                } else {
-                    println!("{} has not been logged", path);
-                }
-                Ok(futures::future::ok(()))
+            if !chain.is_empty() && crtsh::is_cert_logged(&http_client, &chain[0]).await {
+                println!("{} was already logged", path);
+            } else {
+                println!("{} has not been logged", path);
             }
+            Ok(futures::future::ok(()))
         }))
         .buffered(16)
         .for_each(|()| futures::future::ok(())),
