@@ -24,7 +24,7 @@ use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
 use futures::io::AsyncWriteExt;
-use futures::stream::{TryStreamExt, StreamExt};
+use futures::stream::{StreamExt, TryStreamExt};
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::fs::{self, File};
@@ -344,7 +344,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             .filter_map(|r| r);
     let server = hyper::Server::builder(connections)
         .serve(hyper::service::make_service_fn(
-            move |conn: &tokio_rustls::TlsStream<tokio::net::TcpStream, rustls::ServerSession>| {
+            move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
                 let http_client = new_http_client();
                 futures::future::ok::<_, Box<dyn std::error::Error + Send + Sync + 'static>>(
                     HttpHandler {
