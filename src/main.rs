@@ -23,7 +23,7 @@ use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
-use futures::compat::Future01CompatExt;
+use futures::io::AsyncWriteExt;
 use futures::stream::StreamExt;
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
@@ -36,7 +36,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
-use tokio::io::AsyncWriteExt;
 use tokio_process::CommandExt;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
@@ -211,14 +210,10 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
             .spawn_async()
             .unwrap();
         let cert_bytes = peer_chain[0].0.clone();
-        process
-            .stdin()
-            .take()
-            .unwrap()
-            .write_all(cert_bytes)
+        AsyncWriteExt::write_all(&mut process.stdin().take().unwrap(), &cert_bytes)
             .await
             .unwrap();
-        let out = process.wait_with_output().compat().await.unwrap();
+        let out = process.wait_with_output().await.unwrap();
         rendered_cert = Some(String::from_utf8_lossy(&out.stdout).into_owned());
     }
 
