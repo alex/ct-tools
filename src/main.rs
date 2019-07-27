@@ -24,7 +24,7 @@ use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
 use futures::io::AsyncWriteExt;
-use futures::stream::StreamExt;
+use futures::stream::{TryStreamExt, StreamExt};
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::fs::{self, File};
@@ -336,7 +336,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         tokio::net::TcpListener::from_std(listener.listen(1024).unwrap(), &Handle::default())
             .unwrap()
             .incoming()
-            .and_then(move |(sock, _addr)| tls_acceptor.accept(sock))
+            .and_then(move |sock| tls_acceptor.accept(sock))
             .then(|r| match r {
                 Ok(c) => Ok::<_, std::io::Error>(Some(c)),
                 Err(_) => Ok(None),
