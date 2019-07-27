@@ -35,6 +35,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
+use tokio::reactor::Handle;
 use tokio_process::CommandExt;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
@@ -230,7 +231,8 @@ impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service for H
     type ReqBody = hyper::Body;
     type ResBody = hyper::Body;
     type Error = hyper::Error;
-    type Future = Box<dyn hyper::rt::Future<Item = hyper::Response<Self::ResBody>, Error=Self::Error>>;
+    type Future =
+        Box<dyn hyper::rt::Future<Item = hyper::Response<Self::ResBody>, Error = Self::Error>>;
 
     fn call(&mut self, request: hyper::Request<hyper::Body>) -> Self::Future {
         Box::new(handle_request(
@@ -331,7 +333,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     listener.bind(addr).unwrap();
     let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(tls_config));
     let connections =
-        tokio::net::TcpListener::from_std(listener.listen(1024).unwrap(), &rt.handle())
+        tokio::net::TcpListener::from_std(listener.listen(1024).unwrap(), &Handle::default())
             .unwrap()
             .incoming()
             .and_then(move |(sock, _addr)| tls_acceptor.accept(sock))
