@@ -28,7 +28,6 @@ use futures::stream::StreamExt;
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::fs::{self, File};
-use std::future::Future;
 use std::io::Read;
 use std::net::SocketAddr;
 use std::process::{Command, Stdio};
@@ -231,7 +230,7 @@ impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service for H
     type ReqBody = hyper::Body;
     type ResBody = hyper::Body;
     type Error = hyper::Error;
-    type Future = Box<dyn Future<Output = Result<hyper::Response<Self::ResBody>, Self::Error>>>;
+    type Future = Box<dyn hyper::rt::Future<Item = hyper::Response<Self::ResBody>, Error=Self::Error>>;
 
     fn call(&mut self, request: hyper::Request<hyper::Body>) -> Self::Future {
         Box::new(handle_request(
@@ -310,7 +309,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
 
     let mut rt = tokio::runtime::Runtime::new().unwrap();
     let http_client = new_http_client();
-    let logs = Arc::new(rt.block_on(fetch_trusted_ct_logs(&http_client)).unwrap());
+    let logs = Arc::new(rt.block_on(fetch_trusted_ct_logs(&http_client)));
     let templates = Arc::new(compile_templates!("templates/*"));
 
     let addr = if local_dev {
@@ -332,7 +331,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     listener.bind(addr).unwrap();
     let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(tls_config));
     let connections =
-        tokio::net::TcpListener::from_listener(listener.listen(1024).unwrap(), &addr, &rt.handle())
+        tokio::net::TcpListener::from_std(listener.listen(1024).unwrap(), &rt.handle())
             .unwrap()
             .incoming()
             .and_then(move |(sock, _addr)| tls_acceptor.accept(sock))
