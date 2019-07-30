@@ -6,9 +6,9 @@ edition = "2018"
 
 [dependencies]
 futures-preview = { version = ">=0.3.0-alpha", features = ["compat"] }
-tokio = { version = "0.2", git = "https://github.com/afinch7/tokio", branch = "update_tokio_process" }
-tokio-io = { version = "0.2", git = "https://github.com/afinch7/tokio", branch = "update_tokio_process" }
-tokio-process = { version = "0.2", git = "https://github.com/afinch7/tokio", branch = "update_tokio_process" }
+tokio = { version = "0.2", git = "https://github.com/tokio-rs/tokio" }
+tokio-io = { version = "0.2", git = "https://github.com/tokio-rs/tokio" }
+tokio-process = { version = "0.2", git = "https://github.com/tokio-rs/tokio" }
 tokio-rustls = ">=0.10.0-alpha.4"
 tokio-service = "*"
 net2 = "*"
