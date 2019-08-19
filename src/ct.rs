@@ -4,10 +4,8 @@ use base64;
 use byteorder::{BigEndian, WriteBytesExt};
 
 use futures;
-use futures::compat::Future01CompatExt;
-use futures::FutureExt;
+use futures::{FutureExt, StreamExt, TryStreamExt};
 use hyper;
-use hyper::rt::Stream;
 use serde_json;
 use std::io::Write;
 use std::time::Duration;
@@ -61,12 +59,8 @@ async fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
         .header("Content-Type", "application/json")
         .body(payload.into())
         .unwrap();
-    let r = http_client.request(request);
-    let response = match r.compat().await {
-        Ok(r) => r,
-        // TODO: maybe not all of these should be silently ignored.
-        Err(_) => return Err(()),
-    };
+    // TODO: maybe not all of these should be silently ignored.
+    let response = http_client.request(request).await.map_err(|_| ())?;
 
     // 400, 403, and probably some others generally indicate a log doesn't accept certs from
     // this root, or that the log isn't accepting new submissions. Server errors mean there's
@@ -80,8 +74,7 @@ async fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
     let body = response
         .into_body()
         .take(10 * 1024 * 1024)
-        .concat2()
-        .compat()
+        .try_concat()
         .await
         .unwrap();
     Ok(serde_json::from_slice(&body).unwrap())

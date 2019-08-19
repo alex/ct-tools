@@ -23,20 +23,20 @@ use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
-use tokio_io::AsyncWriteExt;
 use futures::stream::{StreamExt, TryStreamExt};
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::fs::{self, File};
 use std::io::Read;
 use std::net::SocketAddr;
-use std::process::{Command, Stdio};
+use std::process::{Stdio};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
-use tokio::reactor::Handle;
-use tokio_process::CommandExt;
+use tokio_net::driver::Handle;
+use tokio_io::AsyncWriteExt;
+use tokio_process::Command;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
     pem::parse_many(data)
@@ -207,7 +207,7 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .spawn_async()
+            .spawn()
             .unwrap();
         let cert_bytes = peer_chain[0].0.clone();
         AsyncWriteExt::write_all(&mut process.stdin().take().unwrap(), &cert_bytes)
@@ -232,7 +232,7 @@ impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service for H
     type ResBody = hyper::Body;
     type Error = hyper::Error;
     type Future =
-        Box<dyn hyper::rt::Future<Item = hyper::Response<Self::ResBody>, Error = Self::Error>>;
+        Box<dyn hyper::rt::Future<Output = Result<hyper::Response<Self::ResBody>, Self::Error>>>;
 
     fn call(&mut self, request: hyper::Request<hyper::Body>) -> Self::Future {
         Box::new(handle_request(

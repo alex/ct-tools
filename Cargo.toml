@@ -6,10 +6,11 @@ edition = "2018"
 
 [dependencies]
 futures-preview = { version = ">=0.3.0-alpha", features = ["compat"] }
-tokio = ">=0.2.0-alpha.1"
-tokio-io = ">=0.2.0-alpha.1"
-tokio-process = ">=0.3.0-alpha.1"
-tokio-rustls = ">=0.10.0-alpha.4"
+tokio = ">=0.2.0-alpha.2"
+tokio-io = ">=0.2.0-alpha"
+tokio-net = ">=0.2.0-alpha"
+tokio-process = ">=0.3.0-alpha"
+tokio-rustls = ">=0.10.0-alpha"
 tokio-service = "*"
 net2 = "*"
 
@@ -28,7 +29,7 @@ structopt-derive = "*"
 
 hex = "*"
 
-hyper = ">=0.11"
+hyper = { version = "0.13.0-a.0", git = "https://github.com/hyperium/hyper" }
 hyper-rustls = ">=0.11"
 
 openssl = ">=0.10"

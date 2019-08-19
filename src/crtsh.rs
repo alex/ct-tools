@@ -1,9 +1,8 @@
 use super::common::sha256_hex;
 use super::ct::AddChainRequest;
 use base64;
-use futures::compat::Future01CompatExt;
+use futures::TryStreamExt;
 use hyper;
-use hyper::rt::Stream;
 use serde_json;
 use url;
 
@@ -22,19 +21,14 @@ pub async fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
         .header("Connection", "keep-alive")
         .body(body.into_bytes().into())
         .unwrap();
-    // TODO: undo this once lifetime bugs are fixed
-    let r = http_client.request(request);
-    let response = match r.compat().await {
-        Ok(response) => response,
-        // TODO: maybe be more selective in error handling
-        Err(_) => return Err(()),
-    };
+    // TODO: maybe be more selective in error handling
+    let response = http_client.request(request).await.map_err(|_| ())?;
 
     if response.status() == hyper::StatusCode::NOT_FOUND {
         return Err(());
     }
 
-    let body = response.into_body().concat2().compat().await.unwrap();
+    let body = response.into_body().try_concat().await.unwrap();
     let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
     Ok(add_chain_request
         .chain
@@ -53,7 +47,7 @@ pub async fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
         .header("Connection", "keep-alive")
         .body(hyper::Body::empty())
         .unwrap();
-    let response = http_client.request(request).compat().await.unwrap();
+    let response = http_client.request(request).await.unwrap();
     response.status() == hyper::StatusCode::OK
 }
 
