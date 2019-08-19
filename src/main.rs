@@ -29,13 +29,13 @@ use rustls::Session;
 use std::fs::{self, File};
 use std::io::Read;
 use std::net::SocketAddr;
-use std::process::{Stdio};
+use std::process::Stdio;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
-use tokio_net::driver::Handle;
 use tokio_io::AsyncWriteExt;
+use tokio_net::driver::Handle;
 use tokio_process::Command;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
