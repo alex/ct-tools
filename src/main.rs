@@ -227,7 +227,9 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
         .unwrap())
 }
 
-impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service for HttpHandler<C> {
+impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service<hyper::Body>
+    for HttpHandler<C>
+{
     type ResBody = hyper::Body;
     type Error = hyper::Error;
     type Future =
