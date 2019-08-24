@@ -343,16 +343,12 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             .unwrap()
             .incoming()
             .and_then(move |sock| tls_acceptor.accept(sock))
-            .then(|r| match r {
-                Ok(c) => Ok::<_, std::io::Error>(Some(c)),
-                Err(_) => Ok(None),
-            })
-            .filter_map(|r| r);
+            .boxed();
     let server = hyper::Server::builder(connections)
         .serve(hyper::service::make_service_fn(
-            move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
+            async move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
                 let http_client = new_http_client();
-                futures::future::ok::<_, Box<dyn std::error::Error + Send + Sync + 'static>>(
+                Ok::<_, Box<dyn std::error::Error + Send + Sync + 'static>>(
                     HttpHandler {
                         templates: Arc::clone(&templates),
                         http_client: Arc::new(http_client),
@@ -362,8 +358,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
                     },
                 )
             },
-        ))
-        .map_err(|_| ());
+        ));
 
     let mut rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(server);
