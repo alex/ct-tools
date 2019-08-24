@@ -234,7 +234,8 @@ impl<C: hyper::client::connect::Connect + 'static>
 {
     type Response = hyper::Response<hyper::Body>;
     type Error = hyper::Error;
-    type Future = std::pin::Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+    type Future =
+        std::pin::Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn poll_ready(&mut self, _cx: &mut task::Context<'_>) -> task::Poll<Result<(), Self::Error>> {
         Ok(()).into()
@@ -347,7 +348,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     let server = hyper::Server::builder(connections).serve(hyper::service::make_service_fn(
         async move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
             let http_client = new_http_client();
-            Ok::<_, Box<dyn std::error::Error + Send + Sync + 'static>>(HttpHandler {
+            Ok::<_, std::io::Error>(HttpHandler {
                 templates: Arc::clone(&templates),
                 http_client: Arc::new(http_client),
                 logs: Arc::clone(&logs),
