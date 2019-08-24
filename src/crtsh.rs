@@ -1,15 +1,15 @@
 use super::common::sha256_hex;
 use super::ct::AddChainRequest;
 use base64;
-use futures::prelude::{async_block, await, Future, Stream};
+use futures::TryStreamExt;
 use hyper;
 use serde_json;
 use url;
 
-pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
+pub async fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     cert: &[u8],
-) -> impl Future<Item = Vec<Vec<u8>>, Error = ()> {
+) -> Result<Vec<Vec<u8>>, ()> {
     let body = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("b64cert", &base64::encode(&cert))
         .append_pair("onlyonechain", "Y")
@@ -21,46 +21,34 @@ pub fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
         .header("Connection", "keep-alive")
         .body(body.into_bytes().into())
         .unwrap();
-    // TODO: undo this once lifetime bugs are fixed
-    let r = http_client.request(request);
-    async_block! {
-        let response = match await!(r) {
-            Ok(response) => response,
-            // TODO: maybe be more selective in error handling
-            Err(_) => return Err(()),
-        };
+    // TODO: maybe be more selective in error handling
+    let response = http_client.request(request).await.map_err(|_| ())?;
 
-        if response.status() == hyper::StatusCode::NOT_FOUND {
-            return Err(());
-        }
-
-        let body = await!(response.into_body().concat2()).unwrap();
-        let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
-        Ok(
-            add_chain_request
-                .chain
-                .iter()
-                .map(|c| base64::decode(c).unwrap())
-                .collect(),
-        )
+    if response.status() == hyper::StatusCode::NOT_FOUND {
+        return Err(());
     }
+
+    let body = response.into_body().try_concat().await.unwrap();
+    let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
+    Ok(add_chain_request
+        .chain
+        .iter()
+        .map(|c| base64::decode(c).unwrap())
+        .collect())
 }
 
-pub fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
+pub async fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     cert: &[u8],
-) -> impl Future<Item = bool, Error = ()> {
+) -> bool {
     let request = hyper::Request::builder()
         .method("GET")
         .uri(format!("https://crt.sh/?d={}", sha256_hex(cert)))
         .header("Connection", "keep-alive")
         .body(hyper::Body::empty())
         .unwrap();
-    let r = http_client.request(request);
-    async_block! {
-        let response = await!(r).unwrap();
-        Ok(response.status() == hyper::StatusCode::OK)
-    }
+    let response = http_client.request(request).await.unwrap();
+    response.status() == hyper::StatusCode::OK
 }
 
 pub fn url_for_cert(cert: &[u8]) -> String {

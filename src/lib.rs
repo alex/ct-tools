@@ -1,10 +1,10 @@
-#![feature(proc_macro_hygiene, generators)]
+#![feature(async_closure)]
 
 extern crate acme_client;
 extern crate base64;
 extern crate byteorder;
 extern crate chrono;
-extern crate futures_await as futures;
+extern crate futures;
 extern crate hex;
 extern crate hyper;
 extern crate openssl;
@@ -14,7 +14,6 @@ extern crate rustls;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate tokio;
-extern crate tokio_core;
 extern crate url;
 extern crate webpki;
 

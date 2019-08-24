@@ -1,7 +1,6 @@
-#![feature(generators, proc_macro_hygiene)]
+#![feature(async_closure)]
 
 extern crate dirs;
-extern crate futures_await as futures;
 extern crate hyper;
 extern crate hyper_rustls;
 extern crate net2;
@@ -13,7 +12,6 @@ extern crate structopt;
 extern crate structopt_derive;
 #[macro_use]
 extern crate tera;
-extern crate tokio_core;
 extern crate tokio_io;
 extern crate tokio_process;
 extern crate tokio_rustls;
@@ -25,18 +23,19 @@ use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
-use futures::prelude::{async, async_block, await, Future, Stream};
+use futures::stream::{StreamExt, TryStreamExt};
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::fs::{self, File};
 use std::io::Read;
 use std::net::SocketAddr;
-use std::process::{Command, Stdio};
-use std::rc::Rc;
+use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
-use tokio_process::CommandExt;
+use tokio_io::AsyncWriteExt;
+use tokio_net::driver::Handle;
+use tokio_process::Command;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
     pem::parse_many(data)
@@ -67,53 +66,50 @@ fn compute_paths(paths: &[String]) -> Vec<String> {
         .collect()
 }
 
-fn submit(paths: &[String], all_logs: bool) {
-    let mut core = tokio_core::reactor::Core::new().unwrap();
-    let http_client = Rc::new(new_http_client());
+async fn submit(paths: &[String], all_logs: bool) {
+    let http_client = new_http_client();
 
-    let logs = Rc::new(if all_logs {
-        core.run(fetch_all_ct_logs(&http_client)).unwrap()
+    let logs = if all_logs {
+        fetch_all_ct_logs(&http_client).await
     } else {
-        core.run(fetch_trusted_ct_logs(&http_client)).unwrap()
-    });
+        fetch_trusted_ct_logs(&http_client).await
+    };
 
     let all_paths = compute_paths(paths);
 
-    let work: Box<Future<Item = (), Error = ()>> = Box::new(
-        futures::stream::futures_ordered(all_paths.iter().map(|path| {
+    let work = all_paths
+        .iter()
+        .map(|path| {
             let path = path.to_string();
-
             let mut contents = Vec::new();
             File::open(&path)
                 .unwrap()
                 .read_to_end(&mut contents)
                 .unwrap();
 
+            let http_client = &http_client;
+            let logs = &logs;
             let mut chain = pems_to_chain(&contents);
-            let http_client = Rc::clone(&http_client);
-            let logs = Rc::clone(&logs);
-            async_block! {
+            async move {
                 if chain.len() == 1 {
                     // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
                     // as a glorified AIA chaser.
                     println!(
-                        "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
-                        &path
-                    );
-                    let new_chain = await!(crtsh::build_chain_for_cert(&http_client, &chain[0]));
+                    "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
+                    &path
+                );
+                    let new_chain = crtsh::build_chain_for_cert(&http_client, &chain[0]).await;
                     chain = match new_chain {
                         Ok(c) => c,
                         Err(()) => {
                             println!("[{}] Unable to build a chain", path);
-                            return Ok(futures::future::ok(()));
+                            return futures::future::ready(());
                         }
                     }
                 }
                 println!("[{}] Submitting ...", &path);
                 let timeout = Duration::from_secs(30);
-                let scts = await!(
-                    submit_cert_to_logs(&http_client, &logs, &chain, timeout)
-                ).unwrap();
+                let scts = submit_cert_to_logs(&http_client, &logs, &chain, timeout).await;
 
                 if !scts.is_empty() {
                     println!(
@@ -134,22 +130,23 @@ fn submit(paths: &[String], all_logs: bool) {
                     println!("[{}] No SCTs obtained", &path);
                 }
 
-                Ok(futures::future::ok(()))
+                futures::future::ready(())
             }
-        })).buffered(4)
-            .for_each(|()| futures::future::ok(())),
-    );
-    core.run(work).unwrap();
+        })
+        .collect::<futures::stream::FuturesOrdered<_>>()
+        .buffered(4)
+        .for_each(async move |()| ());
+    work.await;
 }
 
-fn check(paths: &[String]) {
-    let mut core = tokio_core::reactor::Core::new().unwrap();
+async fn check(paths: &[String]) {
     let http_client = new_http_client();
 
     let all_paths = compute_paths(paths);
 
-    let work: Box<futures::Future<Item = (), Error = ()>> = Box::new(
-        futures::stream::futures_ordered(all_paths.iter().map(|path| {
+    let work = all_paths
+        .iter()
+        .map(|path| {
             let path = path.to_string();
             let mut contents = Vec::new();
             File::open(&path)
@@ -157,37 +154,25 @@ fn check(paths: &[String]) {
                 .read_to_end(&mut contents)
                 .unwrap();
 
+            let http_client = &http_client;
             let chain = pems_to_chain(&contents);
-            let is_logged: Box<Future<Item = bool, Error = ()>> = if chain.is_empty() {
-                Box::new(futures::future::ok(false))
-            } else {
-                Box::new(crtsh::is_cert_logged(&http_client, &chain[0]))
-            };
-            async_block! {
-                if await!(is_logged).unwrap() {
+            async move {
+                if !chain.is_empty() && crtsh::is_cert_logged(&http_client, &chain[0]).await {
                     println!("{} was already logged", path);
                 } else {
                     println!("{} has not been logged", path);
                 }
-                Ok(futures::future::ok(()))
+
+                futures::future::ready(())
             }
-        }))
+        })
+        .collect::<futures::stream::FuturesOrdered<_>>()
         .buffered(16)
-        .for_each(|()| futures::future::ok(())),
-    );
-    core.run(work).unwrap();
+        .for_each(async move |()| ());
+    work.await;
 }
 
-struct HttpHandler<C: hyper::client::connect::Connect> {
-    templates: Arc<tera::Tera>,
-    http_client: Arc<hyper::Client<C>>,
-    logs: Arc<Vec<Log>>,
-
-    client_certs: Option<Vec<rustls::Certificate>>,
-}
-
-#[async]
-fn handle_request<C: hyper::client::connect::Connect + 'static>(
+async fn handle_request<C: hyper::client::connect::Connect + 'static>(
     request: hyper::Request<hyper::Body>,
     templates: Arc<tera::Tera>,
     http_client: Arc<hyper::Client<C>>,
@@ -198,10 +183,9 @@ fn handle_request<C: hyper::client::connect::Connect + 'static>(
     let mut rendered_cert = None;
     if let Some(peer_chain) = client_certs {
         if request.method() == hyper::Method::POST {
-            if let Ok(chain) = await!(crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0)) {
+            if let Ok(chain) = crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0).await {
                 let timeout = Duration::from_secs(5);
-                let scts =
-                    await!(submit_cert_to_logs(&http_client, &logs, &chain, timeout)).unwrap();
+                let scts = submit_cert_to_logs(&http_client, &logs, &chain, timeout).await;
                 if !scts.is_empty() {
                     crtsh_url = Some(crtsh::url_for_cert(&chain[0]));
                     println!("Successfully submitted: {}", sha256_hex(&chain[0]));
@@ -218,15 +202,14 @@ fn handle_request<C: hyper::client::connect::Connect + 'static>(
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .spawn_async()
+            .spawn()
             .unwrap();
         let cert_bytes = peer_chain[0].0.clone();
-        await!(tokio_io::io::write_all(
-            process.stdin().take().unwrap(),
-            cert_bytes,
-        ))
-        .unwrap();
-        let out = await!(process.wait_with_output()).unwrap();
+        let mut stdin = process.stdin().take().unwrap();
+        AsyncWriteExt::write_all(&mut stdin, &cert_bytes)
+            .await
+            .unwrap();
+        let out = process.wait_with_output().await.unwrap();
         rendered_cert = Some(String::from_utf8_lossy(&out.stdout).into_owned());
     }
 
@@ -238,23 +221,6 @@ fn handle_request<C: hyper::client::connect::Connect + 'static>(
         .status(hyper::StatusCode::OK)
         .body(body.into())
         .unwrap())
-}
-
-impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service for HttpHandler<C> {
-    type ReqBody = hyper::Body;
-    type ResBody = hyper::Body;
-    type Error = hyper::Error;
-    type Future = Box<Future<Item = hyper::Response<Self::ResBody>, Error = Self::Error> + Send>;
-
-    fn call(&mut self, request: hyper::Request<hyper::Body>) -> Self::Future {
-        Box::new(handle_request(
-            request,
-            Arc::clone(&self.templates),
-            Arc::clone(&self.http_client),
-            Arc::clone(&self.logs),
-            self.client_certs.clone(),
-        ))
-    }
 }
 
 struct NoVerificationCertificateVerifier;
@@ -321,9 +287,9 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
 
-    let mut core = tokio_core::reactor::Core::new().unwrap();
-    let http_client = new_http_client();
-    let logs = Arc::new(core.run(fetch_trusted_ct_logs(&http_client)).unwrap());
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let http_client = Arc::new(new_http_client());
+    let logs = Arc::new(rt.block_on(fetch_trusted_ct_logs(&http_client)));
     let templates = Arc::new(compile_templates!("templates/*"));
 
     let addr = if local_dev {
@@ -344,39 +310,36 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     listener.reuse_address(true).unwrap();
     listener.bind(addr).unwrap();
     let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(tls_config));
-    let connections = tokio_core::net::TcpListener::from_listener(
-        listener.listen(1024).unwrap(),
-        &addr,
-        &core.handle(),
-    )
-    .unwrap()
-    .incoming()
-    .and_then(move |(sock, _addr)| tls_acceptor.accept(sock))
-    .then(|r| match r {
-        Ok(c) => Ok::<_, std::io::Error>(Some(c)),
-        Err(_) => Ok(None),
-    })
-    .filter_map(|r| r);
-    let server = hyper::Server::builder(connections)
-        .serve(hyper::service::make_service_fn(
-            move |conn: &tokio_rustls::TlsStream<
-                tokio_core::net::TcpStream,
-                rustls::ServerSession,
-            >| {
-                let http_client = new_http_client();
-                futures::future::ok::<_, Box<dyn std::error::Error + Send + Sync + 'static>>(
-                    HttpHandler {
-                        templates: Arc::clone(&templates),
-                        http_client: Arc::new(http_client),
-                        logs: Arc::clone(&logs),
+    let connections =
+        tokio::net::TcpListener::from_std(listener.listen(1024).unwrap(), &Handle::default())
+            .unwrap()
+            .incoming()
+            .and_then(move |sock| tls_acceptor.accept(sock))
+            .boxed();
+    let server = hyper::Server::builder(connections).serve(hyper::service::make_service_fn(
+        move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
+            let http_client = Arc::clone(&http_client);
+            let templates = Arc::clone(&templates);
+            let logs = Arc::clone(&logs);
+            let client_certs = conn.get_ref().1.get_peer_certificates();
 
-                        client_certs: conn.get_ref().1.get_peer_certificates(),
+            async {
+                Ok::<_, hyper::Error>(hyper::service::service_fn(
+                    move |r: hyper::Request<hyper::Body>| {
+                        handle_request(
+                            r,
+                            Arc::clone(&templates),
+                            Arc::clone(&http_client),
+                            Arc::clone(&logs),
+                            client_certs.clone(),
+                        )
                     },
-                )
-            },
-        ))
-        .map_err(|_| ());
-    hyper::rt::run(server);
+                ))
+            }
+        },
+    ));
+
+    rt.block_on(server).unwrap();
 }
 
 #[derive(StructOpt)]
@@ -423,13 +386,14 @@ enum Opt {
     },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     match Opt::from_args() {
         Opt::Submit { paths, all_logs } => {
-            submit(&paths, all_logs);
+            submit(&paths, all_logs).await;
         }
         Opt::Check { paths } => {
-            check(&paths);
+            check(&paths).await;
         }
         Opt::Server {
             local_dev,

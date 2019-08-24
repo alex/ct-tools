@@ -4,12 +4,12 @@ use base64;
 use byteorder::{BigEndian, WriteBytesExt};
 
 use futures;
-use futures::prelude::{async_block, await, Future, Stream};
+use futures::{FutureExt, StreamExt, TryStreamExt};
 use hyper;
 use serde_json;
 use std::io::Write;
 use std::time::Duration;
-use tokio::prelude::FutureExt;
+use tokio::future::FutureExt as _;
 
 #[derive(Debug, Deserialize)]
 pub struct SignedCertificateTimestamp {
@@ -42,11 +42,11 @@ impl SignedCertificateTimestamp {
     }
 }
 
-fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
+async fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     log: &Log,
     payload: Vec<u8>,
-) -> impl Future<Item = SignedCertificateTimestamp, Error = ()> {
+) -> Result<SignedCertificateTimestamp, ()> {
     let mut url = "https://".to_string() + &log.url;
     if !url.ends_with('/') {
         url += "/";
@@ -59,27 +59,25 @@ fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
         .header("Content-Type", "application/json")
         .body(payload.into())
         .unwrap();
-    let r = http_client.request(request);
-    async_block! {
-        let response = match await!(r) {
-            Ok(r) => r,
-            // TODO: maybe not all of these should be silently ignored.
-            Err(_) => return Err(()),
-        };
+    // TODO: maybe not all of these should be silently ignored.
+    let response = http_client.request(request).await.map_err(|_| ())?;
 
-        // 400, 403, and probably some others generally indicate a log doesn't accept certs from
-        // this root, or that the log isn't accepting new submissions. Server errors mean there's
-        // nothing we can do.
-        if response.status().is_client_error() || response.status().is_server_error() {
-            return Err(());
-        }
-
-        // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS
-        // in the face of a dumb or malicious log.
-        let body = await!(response.into_body().take(10 * 1024 * 1024).concat2())
-            .unwrap();
-        Ok(serde_json::from_slice(&body).unwrap())
+    // 400, 403, and probably some others generally indicate a log doesn't accept certs from
+    // this root, or that the log isn't accepting new submissions. Server errors mean there's
+    // nothing we can do.
+    if response.status().is_client_error() || response.status().is_server_error() {
+        return Err(());
     }
+
+    // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS
+    // in the face of a dumb or malicious log.
+    let body = response
+        .into_body()
+        .take(10 * 1024 * 1024)
+        .try_concat()
+        .await
+        .unwrap();
+    Ok(serde_json::from_slice(&body).unwrap())
 }
 
 #[derive(Serialize, Deserialize)]
@@ -87,12 +85,12 @@ pub struct AddChainRequest {
     pub chain: Vec<String>,
 }
 
-pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
+pub async fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
     http_client: &hyper::Client<C>,
     logs: &[Log],
     cert: &[Vec<u8>],
     timeout: Duration,
-) -> impl Future<Item = Vec<(usize, SignedCertificateTimestamp)>, Error = ()> {
+) -> Vec<(usize, SignedCertificateTimestamp)> {
     let payload = serde_json::to_vec(&AddChainRequest {
         chain: cert.iter().map(|r| base64::encode(r)).collect(),
     })
@@ -101,17 +99,17 @@ pub fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
     let futures = logs
         .iter()
         .enumerate()
-        .map(move |(idx, log)| {
-            let payload = payload.clone();
+        .map(|(idx, log)| (idx, log, payload.clone()))
+        .map(async move |(idx, log, payload)| {
             let s = submit_to_log(http_client, log, payload).timeout(timeout);
-            async_block! {
-                match await!(s) {
-                    Ok(sct) => Ok(Some((idx, sct))),
-                    _ => Ok(None),
-                }
+            match s.await {
+                Ok(Ok(sct)) => Some((idx, sct)),
+                _ => None,
             }
         })
         .collect::<Vec<_>>();
 
-    futures::future::join_all(futures).map(|scts| scts.into_iter().filter_map(|s| s).collect())
+    futures::future::join_all(futures)
+        .map(|scts| scts.into_iter().filter_map(|s| s).collect())
+        .await
 }

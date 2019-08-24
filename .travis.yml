@@ -1,7 +1,6 @@
 sudo: false
 dist: trusty
 language: rust
-cache: cargo
 rust:
   - nightly
 before_script:

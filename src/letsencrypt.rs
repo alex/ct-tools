@@ -218,7 +218,7 @@ pub fn openssl_pkey_to_rustls(
 
 fn openssl_pkey_to_rustls_signer(
     pkey: &openssl::pkey::PKey<openssl::pkey::Private>,
-) -> Box<rustls::sign::SigningKey> {
+) -> Box<dyn rustls::sign::SigningKey> {
     // TODO: ECDSA
     Box::new(rustls::sign::RSASigningKey::new(&openssl_pkey_to_rustls(pkey)).unwrap())
 }

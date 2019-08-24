@@ -1,2 +1,1 @@
-reorder_imports = true
-normalize_comments = true
+edition = "2018"
