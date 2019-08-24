@@ -1,4 +1,4 @@
-#![feature(async_await, async_closure)]
+#![feature(async_closure)]
 
 extern crate dirs;
 extern crate hyper;
@@ -30,7 +30,6 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::net::SocketAddr;
 use std::process::Stdio;
-use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 use structopt::StructOpt;
@@ -68,70 +67,71 @@ fn compute_paths(paths: &[String]) -> Vec<String> {
 }
 
 async fn submit(paths: &[String], all_logs: bool) {
-    let http_client = Rc::new(new_http_client());
+    let http_client = new_http_client();
 
-    let logs = Rc::new(if all_logs {
+    let logs = if all_logs {
         fetch_all_ct_logs(&http_client).await
     } else {
         fetch_trusted_ct_logs(&http_client).await
-    });
+    };
 
     let all_paths = compute_paths(paths);
 
     let work = all_paths
         .iter()
-        .map(async move |path| {
+        .map(|path| {
             let path = path.to_string();
-
             let mut contents = Vec::new();
             File::open(&path)
                 .unwrap()
                 .read_to_end(&mut contents)
                 .unwrap();
 
+            let http_client = &http_client;
+            let logs = &logs;
             let mut chain = pems_to_chain(&contents);
-            let http_client = Rc::clone(&http_client);
-            let logs = Rc::clone(&logs);
-            if chain.len() == 1 {
-                // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
-                // as a glorified AIA chaser.
-                println!(
+            async move {
+                if chain.len() == 1 {
+                    // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
+                    // as a glorified AIA chaser.
+                    println!(
                     "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
                     &path
                 );
-                let new_chain = crtsh::build_chain_for_cert(&http_client, &chain[0]).await;
-                chain = match new_chain {
-                    Ok(c) => c,
-                    Err(()) => {
-                        println!("[{}] Unable to build a chain", path);
-                        return futures::future::ready(());
+                    let new_chain = crtsh::build_chain_for_cert(&http_client, &chain[0]).await;
+                    chain = match new_chain {
+                        Ok(c) => c,
+                        Err(()) => {
+                            println!("[{}] Unable to build a chain", path);
+                            return futures::future::ready(());
+                        }
                     }
                 }
-            }
-            println!("[{}] Submitting ...", &path);
-            let timeout = Duration::from_secs(30);
-            let scts = submit_cert_to_logs(&http_client, &logs, &chain, timeout).await;
+                println!("[{}] Submitting ...", &path);
+                let timeout = Duration::from_secs(30);
+                let scts = submit_cert_to_logs(&http_client, &logs, &chain, timeout).await;
 
-            if !scts.is_empty() {
-                println!(
-                    "[{}] Find the cert on crt.sh: {}",
-                    path,
-                    crtsh::url_for_cert(&chain[0])
-                );
-                let mut table = prettytable::Table::new();
-                table.add_row(row!["Log"]);
-                for (log_idx, _) in scts {
-                    let log = &logs[log_idx];
-                    table.add_row(row![log.description]);
+                if !scts.is_empty() {
+                    println!(
+                        "[{}] Find the cert on crt.sh: {}",
+                        path,
+                        crtsh::url_for_cert(&chain[0])
+                    );
+                    let mut table = prettytable::Table::new();
+                    table.add_row(row!["Log"]);
+                    for (log_idx, _) in scts {
+                        let log = &logs[log_idx];
+                        table.add_row(row![log.description]);
+                    }
+                    table.printstd();
+                    println!();
+                    println!();
+                } else {
+                    println!("[{}] No SCTs obtained", &path);
                 }
-                table.printstd();
-                println!();
-                println!();
-            } else {
-                println!("[{}] No SCTs obtained", &path);
-            }
 
-            futures::future::ready(())
+                futures::future::ready(())
+            }
         })
         .collect::<futures::stream::FuturesOrdered<_>>()
         .buffered(4)
@@ -146,7 +146,7 @@ async fn check(paths: &[String]) {
 
     let work = all_paths
         .iter()
-        .map(async move |path| {
+        .map(|path| {
             let path = path.to_string();
             let mut contents = Vec::new();
             File::open(&path)
@@ -154,14 +154,17 @@ async fn check(paths: &[String]) {
                 .read_to_end(&mut contents)
                 .unwrap();
 
+            let http_client = &http_client;
             let chain = pems_to_chain(&contents);
-            if !chain.is_empty() && crtsh::is_cert_logged(&http_client, &chain[0]).await {
-                println!("{} was already logged", path);
-            } else {
-                println!("{} has not been logged", path);
-            }
+            async move {
+                if !chain.is_empty() && crtsh::is_cert_logged(&http_client, &chain[0]).await {
+                    println!("{} was already logged", path);
+                } else {
+                    println!("{} has not been logged", path);
+                }
 
-            futures::future::ready(())
+                futures::future::ready(())
+            }
         })
         .collect::<futures::stream::FuturesOrdered<_>>()
         .buffered(16)
@@ -202,7 +205,8 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
             .spawn()
             .unwrap();
         let cert_bytes = peer_chain[0].0.clone();
-        AsyncWriteExt::write_all(&mut process.stdin().take().unwrap(), &cert_bytes)
+        let mut stdin = process.stdin().take().unwrap();
+        AsyncWriteExt::write_all(&mut stdin, &cert_bytes)
             .await
             .unwrap();
         let out = process.wait_with_output().await.unwrap();
@@ -283,7 +287,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
 
-    let mut rt = tokio::runtime::Runtime::new().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
     let http_client = Arc::new(new_http_client());
     let logs = Arc::new(rt.block_on(fetch_trusted_ct_logs(&http_client)));
     let templates = Arc::new(compile_templates!("templates/*"));
@@ -322,14 +326,20 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             async {
                 Ok::<_, hyper::Error>(hyper::service::service_fn(
                     move |r: hyper::Request<hyper::Body>| {
-                        handle_request(r, templates, http_client, logs, client_certs)
+                        handle_request(
+                            r,
+                            Arc::clone(&templates),
+                            Arc::clone(&http_client),
+                            Arc::clone(&logs),
+                            client_certs.clone(),
+                        )
                     },
                 ))
             }
         },
     ));
 
-    rt.block_on(server);
+    rt.block_on(server).unwrap();
 }
 
 #[derive(StructOpt)]
