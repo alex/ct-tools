@@ -313,17 +313,19 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             .and_then(move |sock| tls_acceptor.accept(sock))
             .boxed();
     let server = hyper::Server::builder(connections).serve(hyper::service::make_service_fn(
-        async move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
+        move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
             let http_client = Arc::clone(&http_client);
             let templates = Arc::clone(&templates);
             let logs = Arc::clone(&logs);
             let client_certs = conn.get_ref().1.get_peer_certificates();
 
-            Ok::<_, hyper::Error>(hyper::service::service_fn(
-                move |r: hyper::Request<hyper::Body>| {
-                    handle_request(r, templates, http_client, logs, client_certs)
-                },
-            ))
+            async {
+                Ok::<_, hyper::Error>(hyper::service::service_fn(
+                    move |r: hyper::Request<hyper::Body>| {
+                        handle_request(r, templates, http_client, logs, client_certs)
+                    },
+                ))
+            }
         },
     ));
 
