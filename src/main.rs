@@ -344,21 +344,18 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             .incoming()
             .and_then(move |sock| tls_acceptor.accept(sock))
             .boxed();
-    let server = hyper::Server::builder(connections)
-        .serve(hyper::service::make_service_fn(
-            async move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
-                let http_client = new_http_client();
-                Ok::<_, Box<dyn std::error::Error + Send + Sync + 'static>>(
-                    HttpHandler {
-                        templates: Arc::clone(&templates),
-                        http_client: Arc::new(http_client),
-                        logs: Arc::clone(&logs),
+    let server = hyper::Server::builder(connections).serve(hyper::service::make_service_fn(
+        async move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
+            let http_client = new_http_client();
+            Ok::<_, Box<dyn std::error::Error + Send + Sync + 'static>>(HttpHandler {
+                templates: Arc::clone(&templates),
+                http_client: Arc::new(http_client),
+                logs: Arc::clone(&logs),
 
-                        client_certs: conn.get_ref().1.get_peer_certificates(),
-                    },
-                )
-            },
-        ));
+                client_certs: conn.get_ref().1.get_peer_certificates(),
+            })
+        },
+    ));
 
     let mut rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(server);
