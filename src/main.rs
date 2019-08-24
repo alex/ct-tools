@@ -27,11 +27,13 @@ use futures::stream::{StreamExt, TryStreamExt};
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::fs::{self, File};
+use std::future::Future;
 use std::io::Read;
 use std::net::SocketAddr;
 use std::process::Stdio;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::task;
 use std::time::Duration;
 use structopt::StructOpt;
 use tokio_io::AsyncWriteExt;
@@ -227,16 +229,19 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
         .unwrap())
 }
 
-impl<C: hyper::client::connect::Connect + 'static> hyper::service::Service<hyper::Body>
-    for HttpHandler<C>
+impl<C: hyper::client::connect::Connect + 'static>
+    tower_service::Service<hyper::Request<hyper::Body>> for HttpHandler<C>
 {
-    type ResBody = hyper::Body;
+    type Response = hyper::Response<hyper::Body>;
     type Error = hyper::Error;
-    type Future =
-        Box<dyn hyper::rt::Future<Output = Result<hyper::Response<Self::ResBody>, Self::Error>>>;
+    type Future = std::pin::Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+
+    fn poll_ready(&mut self, _cx: &mut task::Context<'_>) -> task::Poll<Result<(), Self::Error>> {
+        Ok(()).into()
+    }
 
     fn call(&mut self, request: hyper::Request<hyper::Body>) -> Self::Future {
-        Box::new(handle_request(
+        Box::pin(handle_request(
             request,
             Arc::clone(&self.templates),
             Arc::clone(&self.http_client),
@@ -359,7 +364,9 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             },
         ))
         .map_err(|_| ());
-    hyper::rt::run(server);
+
+    let mut rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(server);
 }
 
 #[derive(StructOpt)]
