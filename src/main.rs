@@ -284,7 +284,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     tls_config.ticketer = rustls::Ticketer::new();
 
     let mut rt = tokio::runtime::Runtime::new().unwrap();
-    let http_client = new_http_client();
+    let http_client = Arc::new(new_http_client());
     let logs = Arc::new(rt.block_on(fetch_trusted_ct_logs(&http_client)));
     let templates = Arc::new(compile_templates!("templates/*"));
 
@@ -314,7 +314,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             .boxed();
     let server = hyper::Server::builder(connections).serve(hyper::service::make_service_fn(
         async move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
-            let http_client = Arc::new(new_http_client());
+            let http_client = Arc::clone(&http_client);
             let templates = Arc::clone(&templates);
             let logs = Arc::clone(&logs);
             let client_certs = conn.get_ref().1.get_peer_certificates();
