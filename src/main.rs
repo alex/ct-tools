@@ -27,13 +27,11 @@ use futures::stream::{StreamExt, TryStreamExt};
 use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::fs::{self, File};
-use std::future::Future;
 use std::io::Read;
 use std::net::SocketAddr;
 use std::process::Stdio;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::task;
 use std::time::Duration;
 use structopt::StructOpt;
 use tokio_io::AsyncWriteExt;
@@ -171,14 +169,6 @@ async fn check(paths: &[String]) {
     work.await;
 }
 
-struct HttpHandler<C: hyper::client::connect::Connect> {
-    templates: Arc<tera::Tera>,
-    http_client: Arc<hyper::Client<C>>,
-    logs: Arc<Vec<Log>>,
-
-    client_certs: Option<Vec<rustls::Certificate>>,
-}
-
 async fn handle_request<C: hyper::client::connect::Connect + 'static>(
     request: hyper::Request<hyper::Body>,
     templates: Arc<tera::Tera>,
@@ -227,29 +217,6 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
         .status(hyper::StatusCode::OK)
         .body(body.into())
         .unwrap())
-}
-
-impl<C: hyper::client::connect::Connect + 'static>
-    tower_service::Service<hyper::Request<hyper::Body>> for HttpHandler<C>
-{
-    type Response = hyper::Response<hyper::Body>;
-    type Error = hyper::Error;
-    type Future =
-        std::pin::Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
-
-    fn poll_ready(&mut self, _cx: &mut task::Context<'_>) -> task::Poll<Result<(), Self::Error>> {
-        Ok(()).into()
-    }
-
-    fn call(&mut self, request: hyper::Request<hyper::Body>) -> Self::Future {
-        Box::pin(handle_request(
-            request,
-            Arc::clone(&self.templates),
-            Arc::clone(&self.http_client),
-            Arc::clone(&self.logs),
-            self.client_certs.clone(),
-        ))
-    }
 }
 
 struct NoVerificationCertificateVerifier;
@@ -347,14 +314,16 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             .boxed();
     let server = hyper::Server::builder(connections).serve(hyper::service::make_service_fn(
         async move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
-            let http_client = new_http_client();
-            Ok::<_, std::io::Error>(HttpHandler {
-                templates: Arc::clone(&templates),
-                http_client: Arc::new(http_client),
-                logs: Arc::clone(&logs),
+            let http_client = Arc::new(new_http_client());
+            let templates = Arc::clone(&templates);
+            let logs = Arc::clone(&logs);
+            let client_certs = conn.get_ref().1.get_peer_certificates();
 
-                client_certs: conn.get_ref().1.get_peer_certificates(),
-            })
+            Ok::<_, hyper::Error>(hyper::service::service_fn(
+                move |r: hyper::Request<hyper::Body>| {
+                    handle_request(r, templates, http_client, logs, client_certs)
+                },
+            ))
         },
     ));
 
