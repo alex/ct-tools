@@ -327,7 +327,6 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         },
     ));
 
-    let mut rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(server);
 }
 
