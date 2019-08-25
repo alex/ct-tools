@@ -177,13 +177,13 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
     templates: Arc<tera::Tera>,
     http_client: Arc<hyper::Client<C>>,
     logs: Arc<Vec<Log>>,
-    client_certs: Option<Vec<rustls::Certificate>>,
+    client_cert: Option<rustls::Certificate>,
 ) -> Result<hyper::Response<hyper::Body>, hyper::Error> {
     let mut crtsh_url = None;
     let mut rendered_cert = None;
-    if let Some(peer_chain) = client_certs {
+    if let Some(cert) = client_cert {
         if request.method() == hyper::Method::POST {
-            if let Ok(chain) = crtsh::build_chain_for_cert(&http_client, &peer_chain[0].0).await {
+            if let Ok(chain) = crtsh::build_chain_for_cert(&http_client, &cert.0).await {
                 let timeout = Duration::from_secs(5);
                 let scts = submit_cert_to_logs(&http_client, &logs, &chain, timeout).await;
                 if !scts.is_empty() {
@@ -204,7 +204,7 @@ async fn handle_request<C: hyper::client::connect::Connect + 'static>(
             .stderr(Stdio::piped())
             .spawn()
             .unwrap();
-        let cert_bytes = peer_chain[0].0.clone();
+        let cert_bytes = cert.0.clone();
         let mut stdin = process.stdin().take().unwrap();
         AsyncWriteExt::write_all(&mut stdin, &cert_bytes)
             .await
@@ -321,7 +321,11 @@ async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&
             let http_client = Arc::clone(&http_client);
             let templates = Arc::clone(&templates);
             let logs = Arc::clone(&logs);
-            let client_certs = conn.get_ref().1.get_peer_certificates();
+            let client_cert = conn
+                .get_ref()
+                .1
+                .get_peer_certificates()
+                .map(|mut chain| chain.remove(0));
 
             async {
                 Ok::<_, hyper::Error>(hyper::service::service_fn(
@@ -331,7 +335,7 @@ async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&
                             Arc::clone(&templates),
                             Arc::clone(&http_client),
                             Arc::clone(&logs),
-                            client_certs.clone(),
+                            client_cert.clone(),
                         )
                     },
                 ))
