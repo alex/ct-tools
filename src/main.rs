@@ -241,7 +241,7 @@ impl rustls::ClientCertVerifier for NoVerificationCertificateVerifier {
     }
 }
 
-fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) {
+async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) {
     match (local_dev, domain, letsencrypt_env) {
         (true, Some(_), _) | (true, _, Some(_)) => {
             panic!("Can't use both --local-dev and --letsencrypt-env or --domain")
@@ -287,9 +287,8 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
 
-    let rt = tokio::runtime::Runtime::new().unwrap();
     let http_client = Arc::new(new_http_client());
-    let logs = Arc::new(rt.block_on(fetch_trusted_ct_logs(&http_client)));
+    let logs = Arc::new(fetch_trusted_ct_logs(&http_client).await);
     let templates = Arc::new(compile_templates!("templates/*"));
 
     let addr = if local_dev {
@@ -315,6 +314,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
             .unwrap()
             .incoming()
             .and_then(move |sock| tls_acceptor.accept(sock))
+            .filter(move |s| futures::future::ready(s.is_ok()))
             .boxed();
     let server = hyper::Server::builder(connections).serve(hyper::service::make_service_fn(
         move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
@@ -339,7 +339,7 @@ fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) 
         },
     ));
 
-    rt.block_on(server).unwrap();
+    server.await.unwrap()
 }
 
 #[derive(StructOpt)]
@@ -404,7 +404,8 @@ async fn main() {
                 local_dev,
                 domain.as_ref().map(|s| s.as_ref()),
                 letsencrypt_env.as_ref().map(|s| s.as_ref()),
-            );
+            )
+            .await;
         }
     }
 }
