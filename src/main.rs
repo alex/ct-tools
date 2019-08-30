@@ -1,26 +1,20 @@
 #![feature(async_closure)]
 
-use dirs;
-use hyper;
-use hyper_rustls;
-use net2;
-use pem;
 #[macro_use]
 extern crate prettytable;
-use rustls;
-use structopt;
-
-#[macro_use]
-extern crate tera;
-
-use tokio_rustls;
 
 use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
+use dirs;
 use futures::stream::{StreamExt, TryStreamExt};
+use hyper;
+use hyper_rustls;
+use net2;
 use net2::unix::UnixTcpBuilderExt;
+use pem;
+use rustls;
 use rustls::Session;
 use std::fs::{self, File};
 use std::io::Read;
@@ -28,10 +22,12 @@ use std::net::SocketAddr;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
+use structopt;
 use structopt::StructOpt;
 use tokio_io::AsyncWriteExt;
 use tokio_net::driver::Handle;
 use tokio_process::Command;
+use tokio_rustls;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
     pem::parse_many(data)
@@ -285,7 +281,7 @@ async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&
 
     let http_client = Arc::new(new_http_client());
     let logs = Arc::new(fetch_trusted_ct_logs(&http_client).await);
-    let templates = Arc::new(compile_templates!("templates/*"));
+    let templates = Arc::new(tera::compile_templates!("templates/*"));
 
     let addr = if local_dev {
         "0.0.0.0:8000"
