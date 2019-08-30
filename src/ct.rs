@@ -6,6 +6,7 @@ use byteorder::{BigEndian, WriteBytesExt};
 use futures;
 use futures::{FutureExt, StreamExt, TryStreamExt};
 use hyper;
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::io::Write;
 use std::time::Duration;

@@ -3,6 +3,7 @@ use super::common::Log;
 use futures::{StreamExt, TryStreamExt};
 
 use hyper;
+use serde::Deserialize;
 use serde_json;
 
 const TRUSTED_LOG_LIST_URL: &str = "https://www.gstatic.com/ct/log_list/log_list.json";

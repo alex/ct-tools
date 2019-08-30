@@ -39,8 +39,7 @@ ring = "*"
 
 rustls = { version = ">=0.11", features = ["dangerous_configuration"] }
 
-serde = "*"
-serde_derive = "*"
+serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 
 pem = "*"
