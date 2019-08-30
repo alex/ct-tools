@@ -1,23 +1,19 @@
 #![feature(async_closure)]
 
-extern crate dirs;
-extern crate hyper;
-extern crate hyper_rustls;
-extern crate net2;
-extern crate pem;
+use dirs;
+use hyper;
+use hyper_rustls;
+use net2;
+use pem;
 #[macro_use]
 extern crate prettytable;
-extern crate rustls;
-extern crate structopt;
-extern crate structopt_derive;
+use rustls;
+use structopt;
+
 #[macro_use]
 extern crate tera;
-extern crate tokio_io;
-extern crate tokio_process;
-extern crate tokio_rustls;
-extern crate tokio_service;
 
-extern crate ct_tools;
+use tokio_rustls;
 
 use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
