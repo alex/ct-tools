@@ -1,8 +1,5 @@
 #![feature(async_closure)]
 
-#[macro_use]
-extern crate prettytable;
-
 use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
@@ -110,10 +107,12 @@ async fn submit(paths: &[String], all_logs: bool) {
                         crtsh::url_for_cert(&chain[0])
                     );
                     let mut table = prettytable::Table::new();
-                    table.add_row(row!["Log"]);
+                    table.add_row(prettytable::Row::new(vec![prettytable::Cell::new("Log")]));
                     for (log_idx, _) in scts {
                         let log = &logs[log_idx];
-                        table.add_row(row![log.description]);
+                        table.add_row(prettytable::Row::new(vec![prettytable::Cell::new(
+                            &log.description,
+                        )]));
                     }
                     table.printstd();
                     println!();
