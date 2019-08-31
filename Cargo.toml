@@ -5,11 +5,10 @@ authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-futures-preview = { version = ">=0.3.0-alpha", features = ["compat"] }
-tokio = ">=0.2.0-alpha.2"
+futures-preview = { version = ">=0.3.0-alpha.18", features = ["compat"] }
+tokio = ">=0.2.0-alpha.3"
 tokio-io = ">=0.2.0-alpha"
-tokio-net = ">=0.2.0-alpha"
-tokio-process = ">=0.3.0-alpha"
+tokio-net = { version = ">=0.2.0-alpha", features = ["process"] }
 tokio-rustls = ">=0.12.0-alpha"
 tokio-service = "*"
 net2 = "*"
@@ -30,7 +29,7 @@ structopt-derive = "*"
 hex = "*"
 
 hyper = { version = "0.13.0-a.0", git = "https://github.com/hyperium/hyper" }
-hyper-rustls = { version = "0.18.0-alpha", git = "https://github.com/markuskobler/hyper-rustls", branch = "futures-0.3" }
+hyper-rustls = { version = "0.18.0-alpha", git = "https://github.com/alex/hyper-rustls", branch = "no-more-threads" }
 tower-service = "0.3.0-alpha"
 
 openssl = ">=0.10"

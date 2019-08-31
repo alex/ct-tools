@@ -26,7 +26,7 @@ use structopt;
 use structopt::StructOpt;
 use tokio_io::AsyncWriteExt;
 use tokio_net::driver::Handle;
-use tokio_process::Command;
+use tokio_net::process::Command;
 use tokio_rustls;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
@@ -39,7 +39,7 @@ fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
 
 fn new_http_client(
 ) -> hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>> {
-    hyper::Client::builder().build(hyper_rustls::HttpsConnector::new(4))
+    hyper::Client::builder().build(hyper_rustls::HttpsConnector::new())
 }
 
 fn compute_paths(paths: &[String]) -> Vec<String> {
