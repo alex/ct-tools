@@ -374,7 +374,8 @@ enum Opt {
         domain: Option<String>,
         #[structopt(
             long = "letsencrypt-env",
-            raw(possible_values = "&[\"dev\", \"prod\"]"),
+            possible_value = "dev",
+            possible_value = "prod",
             help = "Let's Encrypt environment to use"
         )]
         letsencrypt_env: Option<String>,
