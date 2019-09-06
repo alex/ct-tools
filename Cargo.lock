@@ -354,7 +354,7 @@ dependencies = [
  "futures-preview 0.3.0-alpha.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.13.0-alpha.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "hyper-rustls 0.18.0-alpha.1 (git+https://github.com/alex/hyper-rustls?branch=patch-1)",
+ "hyper-rustls 0.18.0-alpha.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "net2 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl 0.10.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "pem 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -733,7 +733,7 @@ dependencies = [
 [[package]]
 name = "hyper-rustls"
 version = "0.18.0-alpha.1"
-source = "git+https://github.com/alex/hyper-rustls?branch=patch-1#7fc1ec1f9cf6a73951de6fb000e6d5a6f626370a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "ct-logs 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2333,7 +2333,7 @@ dependencies = [
 "checksum hyper 0.10.16 (registry+https://github.com/rust-lang/crates.io-index)" = "0a0652d9a2609a968c14be1a9ea00bf4b1d64e2e1f53a1b51b6fff3a6e829273"
 "checksum hyper 0.13.0-alpha.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b29d2384e8be7c31ae4a829d1aea12d3edd55d35b50bc462d57cf9e5cf0c40ad"
 "checksum hyper-native-tls 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "72332e4a35d3059583623b50e98e491b78f8b96c5521fcb3f428167955aa56e8"
-"checksum hyper-rustls 0.18.0-alpha.1 (git+https://github.com/alex/hyper-rustls?branch=patch-1)" = "<none>"
+"checksum hyper-rustls 0.18.0-alpha.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f24150b761d874e0c191bf1545f2546b27b8bb07c96eb523d855d68721624823"
 "checksum idna 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "38f09e0f0b1fb55fdee1f17470ad800da77af5186a1a76c026b679358b7e844e"
 "checksum idna 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "02e2673c30ee86b5b96a9cb52ad15718aa1f966f5ab9ad54a8b95d5ca33120a9"
 "checksum indexmap 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a4d6d89e0948bf10c08b9ecc8ac5b83f07f857ebe2c0cbe38de15b4e4f510356"

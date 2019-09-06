@@ -29,7 +29,7 @@ structopt-derive = "*"
 hex = "*"
 
 hyper = "0.13.0-alpha"
-hyper-rustls = { version = "0.18.0-alpha", git = "https://github.com/alex/hyper-rustls", branch = "patch-1" }
+hyper-rustls = "0.18.0-alpha"
 tower-service = "0.3.0-alpha"
 
 openssl = ">=0.10"
