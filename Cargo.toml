@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 futures-preview = { version = ">=0.3.0-alpha.18", features = ["compat"] }
-tokio = ">=0.2.0-alpha.3"
+tokio = ">=0.2.0-alpha.5"
 tokio-io = ">=0.2.0-alpha"
 tokio-net = { version = ">=0.2.0-alpha", features = ["process"] }
 tokio-rustls = ">=0.12.0-alpha"
@@ -28,7 +28,7 @@ structopt-derive = "*"
 
 hex = "*"
 
-hyper = "0.13.0-alpha"
+hyper = { version = ">=0.13.0-alpha.2", features = ["unstable-stream"] }
 hyper-rustls = "0.18.0-alpha"
 tower-service = "0.3.0-alpha"
 

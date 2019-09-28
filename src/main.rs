@@ -307,32 +307,34 @@ async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&
             .and_then(move |sock| tls_acceptor.accept(sock))
             .filter(move |s| futures::future::ready(s.is_ok()))
             .boxed();
-    let server = hyper::Server::builder(connections).serve(hyper::service::make_service_fn(
-        move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
-            let http_client = Arc::clone(&http_client);
-            let templates = Arc::clone(&templates);
-            let logs = Arc::clone(&logs);
-            let client_cert = conn
-                .get_ref()
-                .1
-                .get_peer_certificates()
-                .map(|mut chain| chain.remove(0));
+    let server = hyper::Server::builder(hyper::server::accept::from_stream(connections)).serve(
+        hyper::service::make_service_fn(
+            move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
+                let http_client = Arc::clone(&http_client);
+                let templates = Arc::clone(&templates);
+                let logs = Arc::clone(&logs);
+                let client_cert = conn
+                    .get_ref()
+                    .1
+                    .get_peer_certificates()
+                    .map(|mut chain| chain.remove(0));
 
-            async {
-                Ok::<_, hyper::Error>(hyper::service::service_fn(
-                    move |r: hyper::Request<hyper::Body>| {
-                        handle_request(
-                            r,
-                            Arc::clone(&templates),
-                            Arc::clone(&http_client),
-                            Arc::clone(&logs),
-                            client_cert.clone(),
-                        )
-                    },
-                ))
-            }
-        },
-    ));
+                async {
+                    Ok::<_, hyper::Error>(hyper::service::service_fn(
+                        move |r: hyper::Request<hyper::Body>| {
+                            handle_request(
+                                r,
+                                Arc::clone(&templates),
+                                Arc::clone(&http_client),
+                                Arc::clone(&logs),
+                                client_cert.clone(),
+                            )
+                        },
+                    ))
+                }
+            },
+        ),
+    );
 
     server.await.unwrap()
 }
