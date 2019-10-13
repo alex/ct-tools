@@ -2,11 +2,12 @@ use super::common::Log;
 
 use base64;
 use byteorder::{BigEndian, WriteBytesExt};
-
 use futures;
 use futures::{FutureExt, StreamExt, TryStreamExt};
 use hyper;
+use serde::{Deserialize, Serialize};
 use serde_json;
+use std::convert::TryInto;
 use std::io::Write;
 use std::time::Duration;
 use tokio::future::FutureExt as _;
@@ -31,8 +32,8 @@ impl SignedCertificateTimestamp {
         b.write_u64::<BigEndian>(self.timestamp).unwrap();
 
         let extensions = base64::decode(&self.extensions).unwrap();
-        assert!(extensions.len() <= 65_535);
-        b.write_u16::<BigEndian>(extensions.len() as u16).unwrap();
+        b.write_u16::<BigEndian>(extensions.len().try_into().unwrap())
+            .unwrap();
         b.write_all(&extensions).unwrap();
 
         let signature = base64::decode(&self.signature).unwrap();

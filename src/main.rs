@@ -1,30 +1,17 @@
 #![feature(async_closure)]
 
-extern crate dirs;
-extern crate hyper;
-extern crate hyper_rustls;
-extern crate net2;
-extern crate pem;
-#[macro_use]
-extern crate prettytable;
-extern crate rustls;
-extern crate structopt;
-extern crate structopt_derive;
-#[macro_use]
-extern crate tera;
-extern crate tokio_io;
-extern crate tokio_process;
-extern crate tokio_rustls;
-extern crate tokio_service;
-
-extern crate ct_tools;
-
 use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
+use dirs;
 use futures::stream::{StreamExt, TryStreamExt};
+use hyper;
+use hyper_rustls;
+use net2;
 use net2::unix::UnixTcpBuilderExt;
+use pem;
+use rustls;
 use rustls::Session;
 use std::fs::{self, File};
 use std::io::Read;
@@ -32,10 +19,12 @@ use std::net::SocketAddr;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
+use structopt;
 use structopt::StructOpt;
 use tokio_io::AsyncWriteExt;
 use tokio_net::driver::Handle;
-use tokio_process::Command;
+use tokio_net::process::Command;
+use tokio_rustls;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
     pem::parse_many(data)
@@ -47,7 +36,7 @@ fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
 
 fn new_http_client(
 ) -> hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>> {
-    hyper::Client::builder().build(hyper_rustls::HttpsConnector::new(4))
+    hyper::Client::builder().build(hyper_rustls::HttpsConnector::new())
 }
 
 fn compute_paths(paths: &[String]) -> Vec<String> {
@@ -118,10 +107,12 @@ async fn submit(paths: &[String], all_logs: bool) {
                         crtsh::url_for_cert(&chain[0])
                     );
                     let mut table = prettytable::Table::new();
-                    table.add_row(row!["Log"]);
+                    table.add_row(prettytable::Row::new(vec![prettytable::Cell::new("Log")]));
                     for (log_idx, _) in scts {
                         let log = &logs[log_idx];
-                        table.add_row(row![log.description]);
+                        table.add_row(prettytable::Row::new(vec![prettytable::Cell::new(
+                            &log.description,
+                        )]));
                     }
                     table.printstd();
                     println!();
@@ -289,7 +280,7 @@ async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&
 
     let http_client = Arc::new(new_http_client());
     let logs = Arc::new(fetch_trusted_ct_logs(&http_client).await);
-    let templates = Arc::new(compile_templates!("templates/*"));
+    let templates = Arc::new(tera::compile_templates!("templates/*"));
 
     let addr = if local_dev {
         "0.0.0.0:8000"
@@ -316,32 +307,34 @@ async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&
             .and_then(move |sock| tls_acceptor.accept(sock))
             .filter(move |s| futures::future::ready(s.is_ok()))
             .boxed();
-    let server = hyper::Server::builder(connections).serve(hyper::service::make_service_fn(
-        move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
-            let http_client = Arc::clone(&http_client);
-            let templates = Arc::clone(&templates);
-            let logs = Arc::clone(&logs);
-            let client_cert = conn
-                .get_ref()
-                .1
-                .get_peer_certificates()
-                .map(|mut chain| chain.remove(0));
+    let server = hyper::Server::builder(hyper::server::accept::from_stream(connections)).serve(
+        hyper::service::make_service_fn(
+            move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {
+                let http_client = Arc::clone(&http_client);
+                let templates = Arc::clone(&templates);
+                let logs = Arc::clone(&logs);
+                let client_cert = conn
+                    .get_ref()
+                    .1
+                    .get_peer_certificates()
+                    .map(|mut chain| chain.remove(0));
 
-            async {
-                Ok::<_, hyper::Error>(hyper::service::service_fn(
-                    move |r: hyper::Request<hyper::Body>| {
-                        handle_request(
-                            r,
-                            Arc::clone(&templates),
-                            Arc::clone(&http_client),
-                            Arc::clone(&logs),
-                            client_cert.clone(),
-                        )
-                    },
-                ))
-            }
-        },
-    ));
+                async {
+                    Ok::<_, hyper::Error>(hyper::service::service_fn(
+                        move |r: hyper::Request<hyper::Body>| {
+                            handle_request(
+                                r,
+                                Arc::clone(&templates),
+                                Arc::clone(&http_client),
+                                Arc::clone(&logs),
+                                client_cert.clone(),
+                            )
+                        },
+                    ))
+                }
+            },
+        ),
+    );
 
     server.await.unwrap()
 }
@@ -383,7 +376,8 @@ enum Opt {
         domain: Option<String>,
         #[structopt(
             long = "letsencrypt-env",
-            raw(possible_values = "&[\"dev\", \"prod\"]"),
+            possible_value = "dev",
+            possible_value = "prod",
             help = "Let's Encrypt environment to use"
         )]
         letsencrypt_env: Option<String>,

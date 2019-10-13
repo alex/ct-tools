@@ -136,7 +136,7 @@ where
         );
     }
 
-    fn setup_sni_challenge(&self, challenge: &acme_client::Challenge) {
+    fn setup_sni_challenge(&self, challenge: &acme_client::Challenge<'_>) {
         let z_domain = z_domain(challenge);
         let (cert, pkey) = generate_temporary_cert(&z_domain);
 
@@ -148,13 +148,13 @@ where
         );
     }
 
-    fn teardown_sni_challenge(&self, challenge: &acme_client::Challenge) {
+    fn teardown_sni_challenge(&self, challenge: &acme_client::Challenge<'_>) {
         let z_domain = z_domain(challenge);
         self.sni_challenges.lock().unwrap().remove(&z_domain);
     }
 }
 
-fn z_domain(challenge: &acme_client::Challenge) -> String {
+fn z_domain(challenge: &acme_client::Challenge<'_>) -> String {
     let z = sha256_hex(challenge.key_authorization().as_bytes());
     let (z1, z2) = z.split_at(32);
     return format!("{}.{}.acme.invalid", z1, z2);
@@ -242,7 +242,7 @@ where
 {
     fn resolve(
         &self,
-        server_name: Option<webpki::DNSNameRef>,
+        server_name: Option<webpki::DNSNameRef<'_>>,
         _: &[rustls::SignatureScheme],
     ) -> Option<rustls::sign::CertifiedKey> {
         if let Some(sni) = server_name {

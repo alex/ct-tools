@@ -5,16 +5,16 @@ authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-futures-preview = { version = ">=0.3.0-alpha", features = ["compat"] }
-tokio = ">=0.2.0-alpha.2"
+futures-preview = { version = ">=0.3.0-alpha.19", features = ["compat"] }
+tokio = ">=0.2.0-alpha.5"
 tokio-io = ">=0.2.0-alpha"
-tokio-net = ">=0.2.0-alpha"
-tokio-process = ">=0.3.0-alpha"
+tokio-net = { version = ">=0.2.0-alpha", features = ["process"] }
 tokio-rustls = ">=0.12.0-alpha"
 tokio-service = "*"
 net2 = "*"
 
-acme-client = { version = "*", default-features = false }
+# Fork upgrades to a more recent hyper + reqwest
+acme-client = { git = "https://github.com/alex/letsencrypt-rs", branch = "bump-reqwest-hyper", default-features = false }
 
 base64 = ">=0.10"
 
@@ -29,8 +29,8 @@ structopt-derive = "*"
 
 hex = "*"
 
-hyper = { version = "0.13.0-a.0", git = "https://github.com/hyperium/hyper" }
-hyper-rustls = { version = "0.18.0-alpha", git = "https://github.com/markuskobler/hyper-rustls", branch = "futures-0.3" }
+hyper = { version = ">=0.13.0-alpha.2", features = ["unstable-stream"] }
+hyper-rustls = { git = "https://github.com/alex/hyper-rustls", branch = "patch-1" }
 tower-service = "0.3.0-alpha"
 
 openssl = ">=0.10"
@@ -39,8 +39,7 @@ ring = "*"
 
 rustls = { version = ">=0.11", features = ["dangerous_configuration"] }
 
-serde = "*"
-serde_derive = "*"
+serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 
 pem = "*"
