@@ -11,8 +11,6 @@ jobs:
     strategy:
       matrix:
         rust:
-          - stable
-          - beta
           - nightly
 
     steps:
