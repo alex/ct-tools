@@ -280,7 +280,7 @@ async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&
 
     let http_client = Arc::new(new_http_client());
     let logs = Arc::new(fetch_trusted_ct_logs(&http_client).await);
-    let templates = Arc::new(tera::compile_templates!("templates/*"));
+    let templates = Arc::new(tera::Tera::new("templates/*").unwrap());
 
     let addr = if local_dev {
         "0.0.0.0:8000"
