@@ -5,12 +5,9 @@ authors = ["Alex Gaynor <alex.gaynor@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-futures-preview = { version = ">=0.3.0-alpha.19", features = ["compat"] }
-tokio = ">=0.2.0-alpha.5"
-tokio-io = ">=0.2.0-alpha"
-tokio-net = { version = ">=0.2.0-alpha", features = ["process"] }
-tokio-rustls = ">=0.12.0-alpha"
-tokio-service = "*"
+futures = ">=0.3.1"
+tokio = { version = ">=0.2.0", features = ["time", "macros", "process", "tcp", "stream"] }
+tokio-rustls = ">=0.12.0"
 net2 = "*"
 
 # Fork upgrades to a more recent hyper + reqwest
@@ -29,9 +26,9 @@ structopt-derive = "*"
 
 hex = "*"
 
-hyper = { version = ">=0.13.0-alpha.2", features = ["unstable-stream"] }
-hyper-rustls = { version = ">=0.19.0-alpha.3" }
-tower-service = "0.3.0-alpha"
+hyper = "0.13.1"
+hyper-rustls = { git = "https://github.com/CryZe/hyper-rustls", branch = "hyper-0.13.0" }
+tower-service = "0.3.0"
 
 openssl = ">=0.10"
 

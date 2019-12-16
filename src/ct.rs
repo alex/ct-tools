@@ -3,14 +3,13 @@ use super::common::Log;
 use base64;
 use byteorder::{BigEndian, WriteBytesExt};
 use futures;
-use futures::{FutureExt, StreamExt, TryStreamExt};
+use futures::FutureExt;
 use hyper;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::convert::TryInto;
 use std::io::Write;
 use std::time::Duration;
-use tokio::future::FutureExt as _;
 
 #[derive(Debug, Deserialize)]
 pub struct SignedCertificateTimestamp {
@@ -43,7 +42,7 @@ impl SignedCertificateTimestamp {
     }
 }
 
-async fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
+async fn submit_to_log<C: hyper::client::connect::Connect + Send + Sync + Clone + 'static>(
     http_client: &hyper::Client<C>,
     log: &Log,
     payload: Vec<u8>,
@@ -70,14 +69,7 @@ async fn submit_to_log<C: hyper::client::connect::Connect + 'static>(
         return Err(());
     }
 
-    // Limt the response to 10MB (well above what would ever be needed) to be resilient to DoS
-    // in the face of a dumb or malicious log.
-    let body = response
-        .into_body()
-        .take(10 * 1024 * 1024)
-        .try_concat()
-        .await
-        .unwrap();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     Ok(serde_json::from_slice(&body).unwrap())
 }
 
@@ -86,7 +78,9 @@ pub struct AddChainRequest {
     pub chain: Vec<String>,
 }
 
-pub async fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
+pub async fn submit_cert_to_logs<
+    C: hyper::client::connect::Connect + Send + Sync + Clone + 'static,
+>(
     http_client: &hyper::Client<C>,
     logs: &[Log],
     cert: &[Vec<u8>],
@@ -102,7 +96,7 @@ pub async fn submit_cert_to_logs<C: hyper::client::connect::Connect + 'static>(
         .enumerate()
         .map(|(idx, log)| (idx, log, payload.clone()))
         .map(async move |(idx, log, payload)| {
-            let s = submit_to_log(http_client, log, payload).timeout(timeout);
+            let s = tokio::time::timeout(timeout, submit_to_log(http_client, log, payload));
             match s.await {
                 Ok(Ok(sct)) => Some((idx, sct)),
                 _ => None,

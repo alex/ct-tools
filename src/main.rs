@@ -21,9 +21,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use structopt;
 use structopt::StructOpt;
-use tokio_io::AsyncWriteExt;
-use tokio_net::driver::Handle;
-use tokio_net::process::Command;
+use tokio::io::AsyncWriteExt;
+use tokio::process::Command;
 use tokio_rustls;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
@@ -163,7 +162,7 @@ async fn check(paths: &[String]) {
     work.await;
 }
 
-async fn handle_request<C: hyper::client::connect::Connect + 'static>(
+async fn handle_request<C: hyper::client::connect::Connect + Send + Sync + Clone + 'static>(
     request: hyper::Request<hyper::Body>,
     templates: Arc<tera::Tera>,
     http_client: Arc<hyper::Client<C>>,
@@ -292,21 +291,21 @@ async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&
 
     // If there aren't at least two threads, the Let's Encrypt integration will deadlock.
     println!("Listening on https://{} ...", addr);
-    let listener = match addr {
+    let std_listener = match addr {
         SocketAddr::V4(_) => net2::TcpBuilder::new_v4().unwrap(),
         SocketAddr::V6(_) => net2::TcpBuilder::new_v6().unwrap(),
     };
-    listener.reuse_port(true).unwrap();
-    listener.reuse_address(true).unwrap();
-    listener.bind(addr).unwrap();
+    std_listener.reuse_port(true).unwrap();
+    std_listener.reuse_address(true).unwrap();
+    std_listener.bind(addr).unwrap();
     let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(tls_config));
-    let connections =
-        tokio::net::TcpListener::from_std(listener.listen(1024).unwrap(), &Handle::default())
-            .unwrap()
-            .incoming()
-            .and_then(move |sock| tls_acceptor.accept(sock))
-            .filter(move |s| futures::future::ready(s.is_ok()))
-            .boxed();
+    let mut listener =
+        tokio::net::TcpListener::from_std(std_listener.listen(1024).unwrap()).unwrap();
+    let connections = listener
+        .incoming()
+        .and_then(move |sock| tls_acceptor.accept(sock))
+        .filter(move |s| futures::future::ready(s.is_ok()))
+        .boxed();
     let server = hyper::Server::builder(hyper::server::accept::from_stream(connections)).serve(
         hyper::service::make_service_fn(
             move |conn: &tokio_rustls::server::TlsStream<tokio::net::TcpStream>| {

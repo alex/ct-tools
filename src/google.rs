@@ -1,7 +1,5 @@
 use super::common::Log;
 
-use futures::{StreamExt, TryStreamExt};
-
 use hyper;
 use serde::Deserialize;
 use serde_json;
@@ -29,19 +27,23 @@ struct LogsResponse {
     operators: Vec<LogsResponseOperators>,
 }
 
-pub async fn fetch_trusted_ct_logs<C: hyper::client::connect::Connect + 'static>(
+pub async fn fetch_trusted_ct_logs<
+    C: hyper::client::connect::Connect + Send + Sync + Clone + 'static,
+>(
     http_client: &hyper::Client<C>,
 ) -> Vec<Log> {
     fetch_log_list(http_client, TRUSTED_LOG_LIST_URL.parse().unwrap()).await
 }
 
-pub async fn fetch_all_ct_logs<C: hyper::client::connect::Connect + 'static>(
+pub async fn fetch_all_ct_logs<
+    C: hyper::client::connect::Connect + Send + Sync + Clone + 'static,
+>(
     http_client: &hyper::Client<C>,
 ) -> Vec<Log> {
     fetch_log_list(http_client, ALL_LOG_LIST_URL.parse().unwrap()).await
 }
 
-async fn fetch_log_list<C: hyper::client::connect::Connect + 'static>(
+async fn fetch_log_list<C: hyper::client::connect::Connect + Send + Sync + Clone + 'static>(
     http_client: &hyper::Client<C>,
     uri: hyper::Uri,
 ) -> Vec<Log> {
@@ -51,13 +53,7 @@ async fn fetch_log_list<C: hyper::client::connect::Connect + 'static>(
         .body(hyper::Body::empty())
         .unwrap();
     let response = http_client.request(request).await.unwrap();
-    // Limit the response to 10MB at most, to be resillient to DoS.
-    let body = response
-        .into_body()
-        .take(10 * 1024 * 1024)
-        .try_concat()
-        .await
-        .unwrap();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let logs_response: LogsResponse = serde_json::from_slice(&body).unwrap();
 
     let google_id = logs_response

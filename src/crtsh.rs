@@ -1,12 +1,13 @@
 use super::common::sha256_hex;
 use super::ct::AddChainRequest;
 use base64;
-use futures::TryStreamExt;
 use hyper;
 use serde_json;
 use url;
 
-pub async fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
+pub async fn build_chain_for_cert<
+    C: hyper::client::connect::Connect + Send + Sync + Clone + 'static,
+>(
     http_client: &hyper::Client<C>,
     cert: &[u8],
 ) -> Result<Vec<Vec<u8>>, ()> {
@@ -28,7 +29,7 @@ pub async fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
         return Err(());
     }
 
-    let body = response.into_body().try_concat().await.unwrap();
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let add_chain_request: AddChainRequest = serde_json::from_slice(&body).unwrap();
     Ok(add_chain_request
         .chain
@@ -37,7 +38,7 @@ pub async fn build_chain_for_cert<C: hyper::client::connect::Connect + 'static>(
         .collect())
 }
 
-pub async fn is_cert_logged<C: hyper::client::connect::Connect + 'static>(
+pub async fn is_cert_logged<C: hyper::client::connect::Connect + Send + Sync + Clone + 'static>(
     http_client: &hyper::Client<C>,
     cert: &[u8],
 ) -> bool {
