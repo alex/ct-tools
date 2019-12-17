@@ -15,8 +15,6 @@ acme-client = { git = "https://github.com/alex/letsencrypt-rs", branch = "bump-r
 
 base64 = ">=0.10"
 
-byteorder = "*"
-
 chrono = "*"
 
 dirs = "*"

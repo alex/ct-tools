@@ -1,13 +1,12 @@
 use super::common::Log;
 
 use base64;
-use byteorder::{BigEndian, WriteBytesExt};
 use futures;
 use futures::FutureExt;
 use hyper;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::convert::TryInto;
+use std::convert::TryFrom;
 use std::io::Write;
 use std::time::Duration;
 
@@ -23,15 +22,15 @@ pub struct SignedCertificateTimestamp {
 impl SignedCertificateTimestamp {
     pub fn to_raw_bytes(&self) -> Vec<u8> {
         let mut b = Vec::new();
-        b.write_u8(self.sct_version).unwrap();
+        b.write_all(&[self.sct_version]).unwrap();
 
         let log_id = base64::decode(&self.id).unwrap();
         b.write_all(&log_id).unwrap();
 
-        b.write_u64::<BigEndian>(self.timestamp).unwrap();
+        b.write_all(&self.timestamp.to_be_bytes()).unwrap();
 
         let extensions = base64::decode(&self.extensions).unwrap();
-        b.write_u16::<BigEndian>(extensions.len().try_into().unwrap())
+        b.write_all(&u16::try_from(extensions.len()).unwrap().to_be_bytes())
             .unwrap();
         b.write_all(&extensions).unwrap();
 
