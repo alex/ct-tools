@@ -25,7 +25,7 @@ structopt-derive = "*"
 hex = "*"
 
 hyper = "0.13.1"
-hyper-rustls = { git = "https://github.com/ctz/hyper-rustls" }
+hyper-rustls = "0.19"
 tower-service = "0.3.0"
 
 openssl = ">=0.10"
