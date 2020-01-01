@@ -94,11 +94,13 @@ pub async fn submit_cert_to_logs<
         .iter()
         .enumerate()
         .map(|(idx, log)| (idx, log, payload.clone()))
-        .map(async move |(idx, log, payload)| {
+        .map(move |(idx, log, payload)| {
             let s = tokio::time::timeout(timeout, submit_to_log(http_client, log, payload));
-            match s.await {
-                Ok(Ok(sct)) => Some((idx, sct)),
-                _ => None,
+            async move {
+                match s.await {
+                    Ok(Ok(sct)) => Some((idx, sct)),
+                    _ => None,
+                }
             }
         })
         .collect::<Vec<_>>();
