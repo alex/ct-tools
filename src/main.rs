@@ -1,5 +1,3 @@
-#![feature(async_closure)]
-
 use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
@@ -125,7 +123,7 @@ async fn submit(paths: &[String], all_logs: bool) {
         })
         .collect::<futures::stream::FuturesOrdered<_>>()
         .buffered(4)
-        .for_each(async move |()| ());
+        .for_each(move |()| async {});
     work.await;
 }
 
@@ -158,7 +156,7 @@ async fn check(paths: &[String]) {
         })
         .collect::<futures::stream::FuturesOrdered<_>>()
         .buffered(16)
-        .for_each(async move |()| ());
+        .for_each(move |()| async {});
     work.await;
 }
 
