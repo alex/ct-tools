@@ -2,7 +2,6 @@ use super::common::Log;
 
 use base64;
 use futures;
-use futures::FutureExt;
 use hyper;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -104,7 +103,6 @@ pub async fn submit_cert_to_logs<
         })
         .collect::<Vec<_>>();
 
-    futures::future::join_all(futures)
-        .map(|scts| scts.into_iter().filter_map(|s| s).collect())
-        .await
+    let scts = futures::future::join_all(futures).await;
+    scts.into_iter().filter_map(|s| s).collect()
 }
