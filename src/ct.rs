@@ -93,9 +93,8 @@ pub async fn submit_cert_to_logs<
     let futures = logs
         .iter()
         .enumerate()
-        .map(|(idx, log)| (idx, log, payload.clone()))
-        .map(move |(idx, log, payload)| {
-            let s = tokio::time::timeout(timeout, submit_to_log(http_client, log, payload));
+        .map(move |(idx, log)| {
+            let s = tokio::time::timeout(timeout, submit_to_log(http_client, log, payload.clone()));
             async move {
                 match s.await {
                     Ok(Ok(sct)) => Some((idx, sct)),
