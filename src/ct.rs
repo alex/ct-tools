@@ -2,7 +2,6 @@ use super::common::Log;
 
 use base64;
 use futures;
-use hyper;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::convert::TryFrom;
@@ -40,8 +39,8 @@ impl SignedCertificateTimestamp {
     }
 }
 
-async fn submit_to_log<C: hyper::client::connect::Connect + Send + Sync + Clone + 'static>(
-    http_client: &hyper::Client<C>,
+async fn submit_to_log(
+    http_client: &reqwest::Client,
     log: &Log,
     payload: Vec<u8>,
 ) -> Result<SignedCertificateTimestamp, ()> {
@@ -51,14 +50,13 @@ async fn submit_to_log<C: hyper::client::connect::Connect + Send + Sync + Clone 
     }
     url += "ct/v1/add-chain";
 
-    let request = hyper::Request::builder()
-        .method("POST")
-        .uri(url)
+    let response = http_client
+        .post(&url)
         .header("Content-Type", "application/json")
-        .body(payload.into())
-        .unwrap();
-    // TODO: maybe not all of these should be silently ignored.
-    let response = http_client.request(request).await.map_err(|_| ())?;
+        .body(payload)
+        .send()
+        .await
+        .map_err(|_| ())?;
 
     // 400, 403, and probably some others generally indicate a log doesn't accept certs from
     // this root, or that the log isn't accepting new submissions. Server errors mean there's
@@ -67,8 +65,7 @@ async fn submit_to_log<C: hyper::client::connect::Connect + Send + Sync + Clone 
         return Err(());
     }
 
-    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
-    Ok(serde_json::from_slice(&body).unwrap())
+    Ok(response.json().await.unwrap())
 }
 
 #[derive(Serialize, Deserialize)]
@@ -76,10 +73,8 @@ pub struct AddChainRequest {
     pub chain: Vec<String>,
 }
 
-pub async fn submit_cert_to_logs<
-    C: hyper::client::connect::Connect + Send + Sync + Clone + 'static,
->(
-    http_client: &hyper::Client<C>,
+pub async fn submit_cert_to_logs(
+    http_client: &reqwest::Client,
     logs: &[Log],
     cert: &[Vec<u8>],
     timeout: Duration,

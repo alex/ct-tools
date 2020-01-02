@@ -5,7 +5,6 @@ use ct_tools::{crtsh, letsencrypt};
 use dirs;
 use futures::stream::{StreamExt, TryStreamExt};
 use hyper;
-use hyper_rustls;
 use net2;
 use net2::unix::UnixTcpBuilderExt;
 use pem;
@@ -31,11 +30,6 @@ fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
         .collect()
 }
 
-fn new_http_client(
-) -> hyper::Client<hyper_rustls::HttpsConnector<hyper::client::connect::HttpConnector>> {
-    hyper::Client::builder().build(hyper_rustls::HttpsConnector::new())
-}
-
 fn compute_paths(paths: &[String]) -> Vec<String> {
     paths
         .iter()
@@ -53,7 +47,7 @@ fn compute_paths(paths: &[String]) -> Vec<String> {
 }
 
 async fn submit(paths: &[String], all_logs: bool) {
-    let http_client = new_http_client();
+    let http_client = reqwest::Client::new();
 
     let logs = if all_logs {
         fetch_all_ct_logs(&http_client).await
@@ -128,7 +122,7 @@ async fn submit(paths: &[String], all_logs: bool) {
 }
 
 async fn check(paths: &[String]) {
-    let http_client = new_http_client();
+    let http_client = reqwest::Client::new();
 
     let all_paths = compute_paths(paths);
 
@@ -160,10 +154,10 @@ async fn check(paths: &[String]) {
     work.await;
 }
 
-async fn handle_request<C: hyper::client::connect::Connect + Send + Sync + Clone + 'static>(
+async fn handle_request(
     request: hyper::Request<hyper::Body>,
     templates: Arc<tera::Tera>,
-    http_client: Arc<hyper::Client<C>>,
+    http_client: Arc<reqwest::Client>,
     logs: Arc<Vec<Log>>,
     client_cert: Option<rustls::Certificate>,
 ) -> Result<hyper::Response<hyper::Body>, hyper::Error> {
@@ -275,7 +269,7 @@ async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
 
-    let http_client = Arc::new(new_http_client());
+    let http_client = Arc::new(reqwest::Client::new());
     let logs = Arc::new(fetch_trusted_ct_logs(&http_client).await);
     let templates = Arc::new(tera::Tera::new("templates/*").unwrap());
 
