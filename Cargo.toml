@@ -6,33 +6,18 @@ edition = "2018"
 
 [dependencies]
 futures = ">=0.3.1"
-tokio = { version = ">=0.2.0", features = ["time", "macros", "process", "tcp", "stream"] }
-tokio-rustls = ">=0.12.0"
-net2 = "*"
-
-# Fork upgrades to a more recent hyper + reqwest
-acme-client = { git = "https://github.com/alex/letsencrypt-rs", branch = "bump-reqwest-hyper", default-features = false }
+tokio = { version = ">=0.2.0", features = ["time", "macros", "tcp", "stream"] }
 
 base64 = ">=0.10"
-
-chrono = "*"
-
-dirs = "*"
 
 structopt = "*"
 structopt-derive = "*"
 
 hex = "*"
 
-hyper = "0.13.1"
-tower-service = "0.3.0"
 reqwest = { version = "0.10", default-features = false, features = ["json", "rustls-tls"] }
 
-openssl = ">=0.10"
-
 ring = "*"
-
-rustls = { version = ">=0.11", features = ["dangerous_configuration"] }
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -41,8 +26,5 @@ pem = "*"
 
 prettytable-rs = "*"
 
-tera = ">=0.10.4"
-
 url = "*"
 
-webpki = ">=0.18.0"
