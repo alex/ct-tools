@@ -187,8 +187,7 @@ async fn handle_request(
             .spawn()
             .unwrap();
         let cert_bytes = cert.0.clone();
-        let mut stdin = process.stdin().take().unwrap();
-        AsyncWriteExt::write_all(&mut stdin, &cert_bytes)
+        AsyncWriteExt::write_all(&mut process.stdin.as_mut().unwrap(), &cert_bytes)
             .await
             .unwrap();
         let out = process.wait_with_output().await.unwrap();
