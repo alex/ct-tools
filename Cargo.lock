@@ -301,7 +301,7 @@ dependencies = [
  "pem 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prettytable-rs 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "ring 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.16.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustls 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.45 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -312,7 +312,7 @@ dependencies = [
  "tokio-rustls 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tower-service 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "webpki 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "webpki 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -637,7 +637,7 @@ dependencies = [
  "rustls-native-certs 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-rustls 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "webpki 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "webpki 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1216,7 +1216,7 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.16.9"
+version = "0.16.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cc 1.0.50 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1251,9 +1251,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "ring 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.16.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "sct 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "webpki 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "webpki 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1304,7 +1304,7 @@ name = "sct"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "ring 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.16.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "untrusted 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1581,7 +1581,7 @@ dependencies = [
  "futures-core 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustls 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "webpki 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "webpki 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1859,10 +1859,10 @@ dependencies = [
 
 [[package]]
 name = "webpki"
-version = "0.21.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "ring 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.16.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "untrusted 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1871,7 +1871,7 @@ name = "webpki-roots"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "webpki 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "webpki 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2073,7 +2073,7 @@ dependencies = [
 "checksum regex-syntax 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)" = "e734e891f5b408a29efbf8309e656876276f49ab6a6ac208600b4419bd893d90"
 "checksum remove_dir_all 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4a83fa3702a688b9359eccba92d153ac33fd2e8462f9e0e3fdf155239ea7792e"
 "checksum reqwest 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c0e798e19e258bf6c30a304622e3e9ac820e483b06a1857a026e1f109b113fe4"
-"checksum ring 0.16.9 (registry+https://github.com/rust-lang/crates.io-index)" = "6747f8da1f2b1fabbee1aaa4eb8a11abf9adef0bf58a41cee45db5d59cecdfac"
+"checksum ring 0.16.10 (registry+https://github.com/rust-lang/crates.io-index)" = "113f53b644c5442e20ff3a299be3d6c61ba143737af5bd2ab298e248a7575b2d"
 "checksum rust-argon2 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2bc8af4bda8e1ff4932523b94d3dd20ee30a87232323eda55903ffd71d2fb017"
 "checksum rustc-demangle 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "4c691c0e608126e00913e33f0ccf3727d5fc84573623b8d65b2df340b5201783"
 "checksum rustls 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b25a18b1bf7387f0145e7f8324e700805aade3842dd3db2e74e4cdeb4677c09e"
@@ -2146,7 +2146,7 @@ dependencies = [
 "checksum wasm-bindgen-shared 0.2.56 (registry+https://github.com/rust-lang/crates.io-index)" = "d907984f8506b3554eab48b8efff723e764ddbf76d4cd4a3fe4196bc00c49a70"
 "checksum wasm-bindgen-webidl 0.2.56 (registry+https://github.com/rust-lang/crates.io-index)" = "f85a3825a459cf6a929d03bacb54dca37a614d43032ad1343ef2d4822972947d"
 "checksum web-sys 0.3.33 (registry+https://github.com/rust-lang/crates.io-index)" = "2fb60433d0dc12c803b9b017b3902d80c9451bab78d27bc3210bf2a7b96593f1"
-"checksum webpki 0.21.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d7e664e770ac0110e2384769bcc59ed19e329d81f555916a6e072714957b81b4"
+"checksum webpki 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)" = "def81eb789e43925252e5726b8058dc13c536ffc02dff1ba36b29d2aa1de8a7b"
 "checksum webpki-roots 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a262ae37dd9d60f60dd473d1158f9fbebf110ba7b6a5051c8160460f6043718b"
 "checksum weedle 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3bb43f70885151e629e2a19ce9e50bd730fd436cfd4b666894c9ce4de9141164"
 "checksum winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "167dc9d6949a9b857f3451275e911c3f44255842c1f7a76f33c55103a909087a"
