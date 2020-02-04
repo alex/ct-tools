@@ -1,7 +1,5 @@
 use super::common::sha256_hex;
 use super::ct::AddChainRequest;
-use base64;
-use url;
 
 pub async fn build_chain_for_cert(
     http_client: &reqwest::Client,

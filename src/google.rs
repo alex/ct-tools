@@ -1,6 +1,5 @@
 use super::common::Log;
 
-use reqwest;
 use serde::Deserialize;
 
 const TRUSTED_LOG_LIST_URL: &str = "https://www.gstatic.com/ct/log_list/log_list.json";

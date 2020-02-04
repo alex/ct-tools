@@ -2,13 +2,8 @@ use ct_tools::common::{sha256_hex, Log};
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
-use dirs;
 use futures::stream::{StreamExt, TryStreamExt};
-use hyper;
-use net2;
 use net2::unix::UnixTcpBuilderExt;
-use pem;
-use rustls;
 use rustls::Session;
 use std::fs::{self, File};
 use std::io::Read;
@@ -16,11 +11,9 @@ use std::net::SocketAddr;
 use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
-use structopt;
 use structopt::StructOpt;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
-use tokio_rustls;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
     pem::parse_many(data)

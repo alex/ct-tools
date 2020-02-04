@@ -1,4 +1,3 @@
-use hex;
 use ring::digest;
 
 #[derive(Debug)]

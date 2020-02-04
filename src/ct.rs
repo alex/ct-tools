@@ -1,9 +1,6 @@
 use super::common::Log;
 
-use base64;
-use futures;
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::convert::TryFrom;
 use std::io::Write;
 use std::time::Duration;
