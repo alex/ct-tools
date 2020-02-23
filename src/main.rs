@@ -199,19 +199,23 @@ async fn handle_request(
 
 struct NoVerificationCertificateVerifier;
 impl rustls::ClientCertVerifier for NoVerificationCertificateVerifier {
-    fn client_auth_mandatory(&self) -> bool {
-        false
+    fn client_auth_mandatory(&self, _: Option<&webpki::DNSName>) -> Option<bool> {
+        Some(false)
     }
 
     fn verify_client_cert(
         &self,
         _: &[rustls::Certificate],
+        _: Option<&webpki::DNSName>,
     ) -> Result<rustls::ClientCertVerified, rustls::TLSError> {
         Ok(rustls::ClientCertVerified::assertion())
     }
 
-    fn client_auth_root_subjects(&self) -> rustls::DistinguishedNames {
-        rustls::DistinguishedNames::new()
+    fn client_auth_root_subjects(
+        &self,
+        _: Option<&webpki::DNSName>,
+    ) -> Option<rustls::DistinguishedNames> {
+        Some(rustls::DistinguishedNames::new())
     }
 }
 

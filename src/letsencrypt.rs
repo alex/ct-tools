@@ -234,12 +234,8 @@ impl<C> rustls::ResolvesServerCert for AutomaticCertResolver<C>
 where
     C: CertificateCache,
 {
-    fn resolve(
-        &self,
-        server_name: Option<webpki::DNSNameRef<'_>>,
-        _: &[rustls::SignatureScheme],
-    ) -> Option<rustls::sign::CertifiedKey> {
-        if let Some(sni) = server_name {
+    fn resolve(&self, client_hello: rustls::ClientHello) -> Option<rustls::sign::CertifiedKey> {
+        if let Some(sni) = client_hello.server_name() {
             if let Some(cert) = self.sni_challenges.lock().unwrap().get(sni.into()) {
                 return Some(cert.clone());
             }
