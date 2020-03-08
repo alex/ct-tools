@@ -77,7 +77,7 @@ pub async fn submit_cert_to_logs(
     timeout: Duration,
 ) -> Vec<(usize, SignedCertificateTimestamp)> {
     let payload = serde_json::to_vec(&AddChainRequest {
-        chain: cert.iter().map(|r| base64::encode(r)).collect(),
+        chain: cert.iter().map(base64::encode).collect(),
     })
     .unwrap();
 
