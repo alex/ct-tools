@@ -3,9 +3,9 @@
 [[package]]
 name = "acme-client"
 version = "0.5.3"
-source = "git+https://github.com/alex/letsencrypt-rs?branch=bump-reqwest-hyper#7418f48166300f2502ffaac0e260d201f356dabe"
+source = "git+https://github.com/alex/letsencrypt-rs?branch=bump-reqwest-hyper#0b74d5d77d92528359ecb09daf0847e0fd202232"
 dependencies = [
- "base64 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "base64 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl 0.10.28 (registry+https://github.com/rust-lang/crates.io-index)",
