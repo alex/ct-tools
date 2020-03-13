@@ -919,12 +919,12 @@ version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "pest_generator 2.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pest_generator 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "pest_generator"
-version = "2.1.2"
+version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1962,7 +1962,7 @@ dependencies = [
 "checksum percent-encoding 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 "checksum pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "10f4872ae94d7b90ae48754df22fd42ad52ce740b8f370b03da4835417403e53"
 "checksum pest_derive 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "833d1ae558dc601e9a60366421196a8d94bc0ac980476d0b67e1d0988d72b2d0"
-"checksum pest_generator 2.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "27e5277315f6b4f27e0e6744feb5d5ba1891e7164871033d3c8344c6783b349a"
+"checksum pest_generator 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "99b8db626e31e5b81787b9783425769681b347011cc59471e33ea46d2ea0cf55"
 "checksum pest_meta 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "54be6e404f5317079812fc8f9f5279de376d8856929e21c184ecf6bbd692a11d"
 "checksum pin-project 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "7804a463a8d9572f13453c516a5faea534a2403d7ced2f0c7e100eeff072772c"
 "checksum pin-project-internal 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "385322a45f2ecf3410c68d2a549a4a2685e8051d0f278e39743ff4e451cb9b3f"
