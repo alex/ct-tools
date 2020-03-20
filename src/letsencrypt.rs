@@ -51,10 +51,8 @@ impl CertificateCache for DiskCache {
             fs::read_to_string(self.chain_path(identifier)),
             fs::read_to_string(self.key_path(identifier)),
         ) {
-            (Ok(chain_pem), Ok(key_pem)) => {
-                return Some((chain_pem, key_pem));
-            }
-            _ => return None,
+            (Ok(chain_pem), Ok(key_pem)) => Some((chain_pem, key_pem)),
+            _ => None,
         }
     }
 }
