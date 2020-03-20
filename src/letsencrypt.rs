@@ -2,7 +2,7 @@ use super::common::sha256_hex;
 
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{Cursor, Read, Write};
+use std::io::{Cursor, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -48,17 +48,13 @@ impl CertificateCache for DiskCache {
 
     fn fetch_certificate(&self, identifier: &str) -> Option<(String, String)> {
         match (
-            File::open(self.chain_path(identifier)),
-            File::open(self.key_path(identifier)),
+            fs::read_to_string(self.chain_path(identifier)),
+            fs::read_to_string(self.key_path(identifier)),
         ) {
-            (Ok(mut chain_file), Ok(mut key_file)) => {
-                let mut chain_pem = String::new();
-                chain_file.read_to_string(&mut chain_pem).unwrap();
-                let mut key_pem = String::new();
-                key_file.read_to_string(&mut key_pem).unwrap();
-                Some((chain_pem, key_pem))
+            (Ok(chain_pem), Ok(key_pem)) => {
+                return Some((chain_pem, key_pem));
             }
-            _ => None,
+            _ => return None,
         }
     }
 }
