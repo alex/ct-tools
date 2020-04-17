@@ -20,7 +20,7 @@ structopt = "0.3"
 structopt-derive = "0.4"
 hex = "0.4"
 
-hyper = "0.13.4"
+hyper = "0.13.5"
 tower-service = "0.3.0"
 reqwest = { version = "0.10", default-features = false, features = ["json", "rustls-tls"] }
 
