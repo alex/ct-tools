@@ -68,9 +68,9 @@ async fn submit(paths: &[String], all_logs: bool) {
                     // TODO: There's got to be some way to do this ourselves, instead of using crt.sh
                     // as a glorified AIA chaser.
                     println!(
-                    "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
-                    &path
-                );
+                        "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
+                        &path
+                    );
                     let new_chain = crtsh::build_chain_for_cert(&http_client, &chain[0]).await;
                     chain = match new_chain {
                         Ok(c) => c,
