@@ -8,7 +8,7 @@ edition = "2018"
 futures = ">=0.3.1"
 tokio = { version = ">=0.2.0", features = ["time", "macros", "process", "tcp", "stream"] }
 tokio-rustls = ">=0.12.0"
-net2 = "0.2"
+socket2 = { version = "0.3", features = ["reuseport"] }
 
 # Fork upgrades to a more recent hyper + reqwest
 acme-client = { git = "https://github.com/alex/letsencrypt-rs", branch = "bump-reqwest-hyper", default-features = false }

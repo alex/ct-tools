@@ -3,7 +3,6 @@ use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
 use ct_tools::{crtsh, letsencrypt};
 use futures::stream::{StreamExt, TryStreamExt};
-use net2::unix::UnixTcpBuilderExt;
 use rustls::Session;
 use std::fs::{self, File};
 use std::io::Read;
@@ -269,16 +268,16 @@ async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&
 
     // If there aren't at least two threads, the Let's Encrypt integration will deadlock.
     println!("Listening on https://{} ...", addr);
-    let std_listener = match addr {
-        SocketAddr::V4(_) => net2::TcpBuilder::new_v4().unwrap(),
-        SocketAddr::V6(_) => net2::TcpBuilder::new_v6().unwrap(),
+    let sock_domain = match addr {
+        SocketAddr::V4(_) => socket2::Domain::ipv4(),
+        SocketAddr::V6(_) => socket2::Domain::ipv6(),
     };
-    std_listener.reuse_port(true).unwrap();
-    std_listener.reuse_address(true).unwrap();
-    std_listener.bind(addr).unwrap();
+    let socket = socket2::Socket::new(sock_domain, socket2::Type::stream(), None).unwrap();
+    socket.set_reuse_port(true).unwrap();
+    socket.set_reuse_address(true).unwrap();
+    socket.bind(&socket2::SockAddr::from(addr)).unwrap();
     let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(tls_config));
-    let mut listener =
-        tokio::net::TcpListener::from_std(std_listener.listen(1024).unwrap()).unwrap();
+    let mut listener = tokio::net::TcpListener::from_std(socket.into_tcp_listener()).unwrap();
     let connections = listener
         .incoming()
         .and_then(move |sock| tls_acceptor.accept(sock))
