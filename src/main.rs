@@ -141,7 +141,7 @@ async fn handle_request(
     request: hyper::Request<hyper::Body>,
     templates: Arc<tera::Tera>,
     http_client: Arc<reqwest::Client>,
-    logs: Arc<Vec<Log>>,
+    logs: Arc<[Log]>,
     client_cert: Option<rustls::Certificate>,
 ) -> Result<hyper::Response<hyper::Body>, hyper::Error> {
     let mut crtsh_url = None;
@@ -256,7 +256,7 @@ async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&
     tls_config.ticketer = rustls::Ticketer::new();
 
     let http_client = Arc::new(reqwest::Client::new());
-    let logs = Arc::new(fetch_trusted_ct_logs(&http_client).await);
+    let logs = Arc::from(fetch_trusted_ct_logs(&http_client).await);
     let templates = Arc::new(tera::Tera::new("templates/*").unwrap());
 
     let addr = if local_dev {
