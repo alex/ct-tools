@@ -62,8 +62,8 @@ where
     C: CertificateCache,
 {
     domains: Vec<String>,
-    acme_url: String,
-    acme_account: acme_client::Account,
+    acme_url: acme_lib::DirectoryUrl<'static>,
+    acme_account: acme_lib::Account<acme_lib::persist::MemoryPersist>,
     active_cert: Mutex<Option<rustls::sign::CertifiedKey>>,
     cert_cache: C,
     sni_challenges: Mutex<HashMap<String, rustls::sign::CertifiedKey>>,
@@ -73,16 +73,22 @@ impl<C> AutomaticCertResolver<C>
 where
     C: CertificateCache,
 {
-    pub fn new(acme_url: &str, domains: Vec<String>, cache: C) -> AutomaticCertResolver<C> {
-        let acme_directory = acme_client::Directory::from_url(acme_url).unwrap();
-        let pems = cache.fetch_certificate(&domains_to_identifier(acme_url, &domains));
+    pub fn new(
+        acme_url: acme_lib::DirectoryUrl<'static>,
+        domains: Vec<String>,
+        cache: C,
+    ) -> AutomaticCertResolver<C> {
+        let acme_directory =
+            acme_lib::Directory::from_url(acme_lib::persist::MemoryPersist::new(), acme_url)
+                .unwrap();
+        let pems = cache.fetch_certificate(&domains_to_identifier(acme_url.to_url(), &domains));
         let active_cert = Mutex::new(
             pems.map(|(chain_pem, private_key_pem)| pems_to_rustls(&chain_pem, &private_key_pem)),
         );
         AutomaticCertResolver {
             domains,
             cert_cache: cache,
-            acme_url: acme_url.to_string(),
+            acme_url: acme_url,
             acme_account: acme_directory.account_registration().register().unwrap(),
             active_cert,
             sni_challenges: Mutex::new(HashMap::new()),
@@ -117,35 +123,12 @@ where
         *self.active_cert.lock().unwrap() =
             Some(rustls::sign::CertifiedKey::new(chain, Arc::new(signer)));
         self.cert_cache.store_certificate(
-            &domains_to_identifier(&self.acme_url, &self.domains),
+            &domains_to_identifier(self.acme_url.to_url(), &self.domains),
             std::str::from_utf8(&cert.cert().to_pem().unwrap()).unwrap(),
             // TODO: ECDSA
             std::str::from_utf8(&cert.pkey().rsa().unwrap().private_key_to_pem().unwrap()).unwrap(),
         );
     }
-
-    fn setup_sni_challenge(&self, challenge: &acme_client::Challenge<'_>) {
-        let z_domain = z_domain(challenge);
-        let (cert, pkey) = generate_temporary_cert(&z_domain);
-
-        let chain = vec![openssl_cert_to_rustls(&cert)];
-        let signer = openssl_pkey_to_rustls_signer(&pkey);
-        self.sni_challenges.lock().unwrap().insert(
-            z_domain,
-            rustls::sign::CertifiedKey::new(chain, Arc::new(signer)),
-        );
-    }
-
-    fn teardown_sni_challenge(&self, challenge: &acme_client::Challenge<'_>) {
-        let z_domain = z_domain(challenge);
-        self.sni_challenges.lock().unwrap().remove(&z_domain);
-    }
-}
-
-fn z_domain(challenge: &acme_client::Challenge<'_>) -> String {
-    let z = sha256_hex(challenge.key_authorization().as_bytes());
-    let (z1, z2) = z.split_at(32);
-    return format!("{}.{}.acme.invalid", z1, z2);
 }
 
 pub fn generate_temporary_cert(
