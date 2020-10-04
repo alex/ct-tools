@@ -66,7 +66,7 @@ where
     acme_account: acme_lib::Account<acme_lib::persist::MemoryPersist>,
     active_cert: Mutex<Option<rustls::sign::CertifiedKey>>,
     cert_cache: C,
-    sni_challenges: Mutex<HashMap<String, rustls::sign::CertifiedKey>>,
+    tls_alpn_challenges: Mutex<HashMap<String, rustls::sign::CertifiedKey>>,
 }
 
 impl<C> AutomaticCertResolver<C>
@@ -75,6 +75,7 @@ where
 {
     pub fn new(
         acme_url: acme_lib::DirectoryUrl<'static>,
+        acme_account_email: &str,
         domains: Vec<String>,
         cache: C,
     ) -> AutomaticCertResolver<C> {
@@ -89,23 +90,32 @@ where
             domains,
             cert_cache: cache,
             acme_url: acme_url,
-            acme_account: acme_directory.account_registration().register().unwrap(),
+            acme_account: acme_directory.account(acme_account_email).unwrap(),
             active_cert,
-            sni_challenges: Mutex::new(HashMap::new()),
+            tls_alpn_challenges: Mutex::new(HashMap::new()),
         }
     }
 
     fn obtain_new_certificate(&self) {
-        // Can't do the smart thing of setting them all up, and then triggering the validations in
-        // parallel and waiting for the results because acme-client doesn't expose seperate
-        // "trigger validation" and "wait for success" functions.
-        for domain in &self.domains {
-            let authorization = self.acme_account.authorization(domain).unwrap();
-            let tls_sni_challenge = authorization.get_tls_sni_challenge().unwrap();
-            self.setup_sni_challenge(tls_sni_challenge);
-            tls_sni_challenge.validate().unwrap();
-            self.teardown_sni_challenge(tls_sni_challenge);
+        let order = self
+            .acme_account
+            .new_order(
+                &self.domains[0],
+                &self.domains[1..]
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<&str>>(),
+            )
+            .unwrap();
+
+        for auth in order.authorizations().unwrap() {
+            let challenge = auth.tls_alpn_challenge();
+            if !challenge.need_validate() {
+                continue;
+            }
+            // XXX
         }
+
         let cert = self
             .acme_account
             .certificate_signer(
@@ -212,11 +222,16 @@ where
     C: CertificateCache,
 {
     fn resolve(&self, client_hello: rustls::ClientHello) -> Option<rustls::sign::CertifiedKey> {
-        if let Some(sni) = client_hello.server_name() {
-            if let Some(cert) = self.sni_challenges.lock().unwrap().get(sni.into()) {
-                return Some(cert.clone());
+        if let Some(alpns) = client_hello.alpn() {
+            if alpns.iter().any(|a| a == b"acme-tls/1") {
+                if let Some(sni) = client_hello.server_name() {
+                    if let Some(cert) = self.tls_alpn_challenges.lock().unwrap().get(sni.into()) {
+                        return Some(cert.clone());
+                    }
+                }
             }
         }
+
         // Seperate scope so that the lock isn't held we enter `obtain_new_certificate`.
         {
             let active_cert = self.active_cert.lock().unwrap();
@@ -225,7 +240,9 @@ where
                 return active_cert.clone();
             }
         }
-        // TODO: Don't try to obtain a new cert if we're currently waiting for one already...
+
+        // TODO: Don't try to obtain a new cert if we're currently waiting for
+        // one already...
         self.obtain_new_certificate();
         self.active_cert.lock().unwrap().clone()
     }
