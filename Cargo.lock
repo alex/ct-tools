@@ -158,7 +158,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "bytes"
-version = "0.5.4"
+version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -497,7 +497,7 @@ name = "h2"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "bytes 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytes 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-core 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-sink 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -536,7 +536,7 @@ name = "http"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "bytes 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytes 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "itoa 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -546,7 +546,7 @@ name = "http-body"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "bytes 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytes 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -570,7 +570,7 @@ name = "hyper"
 version = "0.13.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "bytes 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytes 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-channel 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-core 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-util 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -593,7 +593,7 @@ name = "hyper-rustls"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "bytes 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytes 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-util 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.13.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1095,7 +1095,7 @@ version = "0.10.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "base64 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "bytes 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytes 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "encoding_rs 0.8.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-core 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-util 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1389,7 +1389,7 @@ name = "tokio"
 version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "bytes 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytes 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-core 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "iovec 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1433,7 +1433,7 @@ name = "tokio-util"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "bytes 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bytes 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-core 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-sink 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1780,7 +1780,7 @@ dependencies = [
 "checksum bumpalo 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "12ae9db68ad7fac5fe51304d20f016c911539251075a214f8e663babefa35187"
 "checksum byte-tools 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 "checksum byteorder 1.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
-"checksum bytes 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)" = "130aac562c0dd69c56b3b1cc8ffd2e17be31d0b6c25b61c96b76231aa23e39e1"
+"checksum bytes 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0e4cec68f03f32e44924783795810fa50a7035d8c8ebe78580ad7e6c703fba38"
 "checksum cc 1.0.52 (registry+https://github.com/rust-lang/crates.io-index)" = "c3d87b23d6a92cd03af510a5ade527033f6aa6fa92161e2d5863a907d4c5e31d"
 "checksum cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 "checksum chrono 0.4.19 (registry+https://github.com/rust-lang/crates.io-index)" = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
