@@ -420,7 +420,7 @@ name = "futures-macro"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "proc-macro-hack 0.5.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc-macro-hack 0.5.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc-macro2 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 1.0.44 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -453,7 +453,7 @@ dependencies = [
  "memchr 2.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "pin-project 0.4.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "pin-utils 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc-macro-hack 0.5.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc-macro-hack 0.5.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc-macro-nested 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "slab 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1018,7 +1018,7 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-hack"
-version = "0.5.15"
+version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -1904,7 +1904,7 @@ dependencies = [
 "checksum prettytable-rs 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0fd04b170004fa2daccf418a7f8253aaf033c27760b5f225889024cf66d7ac2e"
 "checksum proc-macro-error 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
 "checksum proc-macro-error-attr 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
-"checksum proc-macro-hack 0.5.15 (registry+https://github.com/rust-lang/crates.io-index)" = "0d659fe7c6d27f25e9d80a1a094c223f5246f6a6596453e09d7229bf42750b63"
+"checksum proc-macro-hack 0.5.18 (registry+https://github.com/rust-lang/crates.io-index)" = "99c605b9a0adc77b7211c6b1f722dcb613d68d66859a44f3d485a6da332b0598"
 "checksum proc-macro-nested 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "eba180dafb9038b050a4c280019bbedf9f2467b61e5d892dcad585bb57aadc5a"
 "checksum proc-macro2 1.0.24 (registry+https://github.com/rust-lang/crates.io-index)" = "1e0704ee1a7e00d7bb417d0770ea303c1bccbabf0ef1667dae92b5967f5f8a71"
 "checksum quote 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)" = "aa563d17ecb180e500da1cfd2b028310ac758de548efdd203e18f283af693f37"
