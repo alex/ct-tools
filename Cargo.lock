@@ -183,7 +183,7 @@ version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.2.79 (registry+https://github.com/rust-lang/crates.io-index)",
- "num-integer 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-integer 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -817,7 +817,7 @@ dependencies = [
 
 [[package]]
 name = "num-integer"
-version = "0.1.42"
+version = "0.1.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "autocfg 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1886,7 +1886,7 @@ dependencies = [
 "checksum miow 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8c1f2f3b1cf331de6896aabf6e9d55dca90356cc9960cca7eaaf408a355ae919"
 "checksum miow 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "396aa0f2003d7df8395cb93e09871561ccc3e785f0acb369170e8cc74ddf9226"
 "checksum net2 0.2.35 (registry+https://github.com/rust-lang/crates.io-index)" = "3ebc3ec692ed7c9a255596c67808dee269f64655d8baf7b4f0638e51ba1d6853"
-"checksum num-integer 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)" = "3f6ea62e9d81a77cd3ee9a2a5b9b609447857f3d358704331e4ef39eb247fcba"
+"checksum num-integer 0.1.43 (registry+https://github.com/rust-lang/crates.io-index)" = "8d59457e662d541ba17869cf51cf177c0b5f0cbf476c66bdc90bf1edac4f875b"
 "checksum num-traits 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)" = "c62be47e61d1842b9170f0fdeec8eba98e60e90e5446449a0545e5152acd7096"
 "checksum num_cpus 1.13.0 (registry+https://github.com/rust-lang/crates.io-index)" = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3"
 "checksum object 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)" = "37fd5004feb2ce328a52b0b3d01dbf4ffff72583493900ed15f22d4111c51693"
