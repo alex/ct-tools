@@ -38,6 +38,6 @@ prettytable-rs = "0.8"
 
 tera = ">=0.10.4"
 
-url = "2.1"
+url = "2.2"
 
 webpki = ">=0.18.0"
