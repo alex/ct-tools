@@ -10,12 +10,7 @@ tokio = { version = ">=0.2.0", features = ["time", "macros", "process", "tcp", "
 tokio-rustls = ">=0.12.0"
 socket2 = { version = "0.3", features = ["reuseport"] }
 
-# Fork upgrades to a more recent hyper + reqwest
-acme-client = { git = "https://github.com/alex/letsencrypt-rs", branch = "bump-reqwest-hyper", default-features = false }
-
 base64 = ">=0.10"
-chrono = "0.4"
-dirs = "3.0"
 structopt = "0.3"
 structopt-derive = "0.4"
 hex = "0.4"

@@ -1,7 +1,7 @@
 use ct_tools::common::{sha256_hex, Log};
+use ct_tools::crtsh;
 use ct_tools::ct::submit_cert_to_logs;
 use ct_tools::google::{fetch_all_ct_logs, fetch_trusted_ct_logs};
-use ct_tools::{crtsh, letsencrypt};
 use futures::stream::{StreamExt, TryStreamExt};
 use rustls::Session;
 use std::fs::{self, File};
@@ -208,48 +208,77 @@ impl rustls::ClientCertVerifier for NoVerificationCertificateVerifier {
     }
 }
 
-async fn server(local_dev: bool, domain: Option<&str>, letsencrypt_env: Option<&str>) {
-    match (local_dev, domain, letsencrypt_env) {
-        (true, Some(_), _) | (true, _, Some(_)) => {
-            panic!("Can't use both --local-dev and --letsencrypt-env or --domain")
-        }
-        (_, Some(_), None) | (_, None, Some(_)) => {
-            panic!("When using Let's Encrypt, must set both --letsencrypt-env and --domain")
-        }
-        (false, _, None) => panic!("Must set at least one of --local-dev or --letsencrypt-env"),
-        _ => {}
-    };
+pub fn generate_temporary_cert(
+    domain: &str,
+) -> (
+    openssl::x509::X509,
+    openssl::pkey::PKey<openssl::pkey::Private>,
+) {
+    let pkey = openssl::pkey::PKey::from_rsa(openssl::rsa::Rsa::generate(2048).unwrap()).unwrap();
+    let mut cert_builder = openssl::x509::X509Builder::new().unwrap();
+    cert_builder.set_version(2).unwrap();
+    cert_builder.set_pubkey(&pkey).unwrap();
 
+    let mut serial = openssl::bn::BigNum::new().unwrap();
+    serial
+        .rand(128, openssl::bn::MsbOption::MAYBE_ZERO, false)
+        .unwrap();
+    cert_builder
+        .set_serial_number(&serial.to_asn1_integer().unwrap())
+        .unwrap();
+
+    let mut subject_builder = openssl::x509::X509NameBuilder::new().unwrap();
+    subject_builder
+        .append_entry_by_text("CN", "ACME SNI Challenge Certificate")
+        .unwrap();
+    let subject = subject_builder.build();
+    cert_builder.set_subject_name(&subject).unwrap();
+    cert_builder.set_issuer_name(&subject).unwrap();
+
+    cert_builder
+        .set_not_before(&openssl::asn1::Asn1Time::days_from_now(0).unwrap())
+        .unwrap();
+    cert_builder
+        .set_not_after(&openssl::asn1::Asn1Time::days_from_now(1).unwrap())
+        .unwrap();
+
+    let mut san = openssl::x509::extension::SubjectAlternativeName::new();
+    san.dns(domain);
+    let san_ext = san.build(&cert_builder.x509v3_context(None, None)).unwrap();
+    cert_builder.append_extension(san_ext).unwrap();
+
+    cert_builder
+        .sign(&pkey, openssl::hash::MessageDigest::sha256())
+        .unwrap();
+
+    (cert_builder.build(), pkey)
+}
+
+pub fn openssl_cert_to_rustls(cert: &openssl::x509::X509) -> rustls::Certificate {
+    rustls::Certificate(cert.to_der().unwrap())
+}
+
+pub fn openssl_pkey_to_rustls(
+    pkey: &openssl::pkey::PKey<openssl::pkey::Private>,
+) -> rustls::PrivateKey {
+    rustls::PrivateKey(pkey.rsa().unwrap().private_key_to_der().unwrap())
+}
+
+async fn server(local_dev: bool, domain: Option<&str>) {
     // Disable certificate verification. In any normal context, this would be horribly insecure!
     // However, all we're doing is taking the certs and then turning around and submitting them to
     // CT logs, so it doesn't matter if they're verified.
     let mut tls_config = rustls::ServerConfig::new(Arc::new(NoVerificationCertificateVerifier));
     if local_dev {
-        // TODO: not all the details on the cert are perfect, but it's fine.
-        let (cert, pkey) = letsencrypt::generate_temporary_cert("localhost");
+        let (cert, pkey) = generate_temporary_cert(domain.unwrap_or("localhost"));
         tls_config
             .set_single_cert(
-                vec![letsencrypt::openssl_cert_to_rustls(&cert)],
-                letsencrypt::openssl_pkey_to_rustls(&pkey),
+                vec![openssl_cert_to_rustls(&cert)],
+                openssl_pkey_to_rustls(&pkey),
             )
             .unwrap();
     } else {
-        let letsencrypt_url = match letsencrypt_env.unwrap() {
-            "prod" => "https://acme-v01.api.letsencrypt.org/directory",
-            "dev" => "https://acme-staging.api.letsencrypt.org/directory",
-            _ => unreachable!(),
-        };
-        let cert_cache = letsencrypt::DiskCache::new(
-            dirs::home_dir()
-                .unwrap()
-                .join(".ct-tools")
-                .join("certificates"),
-        );
-        tls_config.cert_resolver = Arc::new(letsencrypt::AutomaticCertResolver::new(
-            letsencrypt_url,
-            vec![domain.unwrap().to_string()],
-            cert_cache,
-        ));
+        panic!("Real TLS is not quite working at the moment");
     }
     tls_config.set_persistence(rustls::ServerSessionMemoryCache::new(1024));
     tls_config.ticketer = rustls::Ticketer::new();
@@ -350,13 +379,6 @@ enum Opt {
         local_dev: bool,
         #[structopt(long = "domain", help = "Domain this is running as")]
         domain: Option<String>,
-        #[structopt(
-            long = "letsencrypt-env",
-            possible_value = "dev",
-            possible_value = "prod",
-            help = "Let's Encrypt environment to use"
-        )]
-        letsencrypt_env: Option<String>,
     },
 }
 
@@ -369,17 +391,8 @@ async fn main() {
         Opt::Check { paths } => {
             check(&paths).await;
         }
-        Opt::Server {
-            local_dev,
-            domain,
-            letsencrypt_env,
-        } => {
-            server(
-                local_dev,
-                domain.as_ref().map(|s| s.as_ref()),
-                letsencrypt_env.as_ref().map(|s| s.as_ref()),
-            )
-            .await;
+        Opt::Server { local_dev, domain } => {
+            server(local_dev, domain.as_ref().map(|s| s.as_ref())).await;
         }
     }
 }
