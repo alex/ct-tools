@@ -306,9 +306,8 @@ async fn server(local_dev: bool, domain: Option<&str>) {
     socket.set_reuse_address(true).unwrap();
     socket.bind(&socket2::SockAddr::from(addr)).unwrap();
     let tls_acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(tls_config));
-    let mut listener = tokio::net::TcpListener::from_std(socket.into_tcp_listener()).unwrap();
-    let connections = listener
-        .incoming()
+    let listener = tokio::net::TcpListener::from_std(socket.into_tcp_listener()).unwrap();
+    let connections = tokio_stream::wrappers::TcpListenerStream::new(listener)
         .and_then(move |sock| tls_acceptor.accept(sock))
         .filter(move |s| futures::future::ready(s.is_ok()))
         .boxed();
