@@ -96,5 +96,5 @@ pub async fn submit_cert_to_logs(
         .collect::<Vec<_>>();
 
     let scts = futures::future::join_all(futures).await;
-    scts.into_iter().filter_map(|s| s).collect()
+    scts.into_iter().flatten().collect()
 }
