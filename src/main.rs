@@ -68,7 +68,7 @@ async fn submit(paths: &[String], all_logs: bool) {
                     "[{}] Only one certificate in chain, using crt.sh to build a full chain ...",
                     &path
                 );
-                let new_chain = crtsh::build_chain_for_cert(&http_client, &chain[0]).await;
+                let new_chain = crtsh::build_chain_for_cert(http_client, &chain[0]).await;
                 chain = match new_chain {
                     Ok(c) => c,
                     Err(()) => {
@@ -79,7 +79,7 @@ async fn submit(paths: &[String], all_logs: bool) {
             }
             println!("[{}] Submitting ...", &path);
             let timeout = Duration::from_secs(30);
-            let scts = submit_cert_to_logs(&http_client, &logs, &chain, timeout).await;
+            let scts = submit_cert_to_logs(http_client, logs, &chain, timeout).await;
 
             if !scts.is_empty() {
                 println!(
@@ -124,7 +124,7 @@ async fn check(paths: &[String]) {
         let http_client = &http_client;
         let chain = pems_to_chain(&contents);
         async move {
-            if !chain.is_empty() && crtsh::is_cert_logged(&http_client, &chain[0]).await {
+            if !chain.is_empty() && crtsh::is_cert_logged(http_client, &chain[0]).await {
                 println!("{} was already logged", path);
             } else {
                 println!("{} has not been logged", path);
