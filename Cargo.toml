@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 futures = ">=0.3.1"
 tokio = { version = "1", features = ["time", "macros", "process", "net", "rt-multi-thread"] }
-tokio-stream = { version = "0.1.6", features = ["net"] }
+tokio-stream = { version = "0.1.7", features = ["net"] }
 tokio-rustls = "0.22"
 socket2 = { version = "0.3", features = ["reuseport"] }
 
@@ -16,7 +16,7 @@ structopt = "0.3"
 structopt-derive = "0.4"
 hex = "0.4"
 
-hyper = { version = "0.14.9", features = ["server", "stream"] }
+hyper = { version = "0.14.10", features = ["server", "stream"] }
 tower-service = "0.3.1"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
 
