@@ -16,6 +16,7 @@ use tokio::process::Command;
 
 fn pems_to_chain(data: &[u8]) -> Vec<Vec<u8>> {
     pem::parse_many(data)
+        .unwrap()
         .into_iter()
         .filter(|p| p.tag == "CERTIFICATE")
         .map(|p| p.contents)
